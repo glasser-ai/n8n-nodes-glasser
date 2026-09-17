@@ -1,0 +1,58 @@
+{
+	"name": "n8n-nodes-glasser",
+	"version": "0.1.0",
+	"description": "Premium data for people, companies, SEO, the web, social media and markets through one Glasser Key. Say what data you want; Glasser picks the provider.",
+	"license": "MIT",
+	"homepage": "https://glasser.ai",
+	"keywords": [
+		"n8n-community-node-package",
+		"glasser",
+		"lead-generation",
+		"enrichment",
+		"seo",
+		"web-search",
+		"social-media",
+		"gtm"
+	],
+	"author": {
+		"name": "Glasser",
+		"email": "support@glasser.ai"
+	},
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/glasser-ai/n8n-nodes-glasser.git"
+	},
+	"scripts": {
+		"build": "n8n-node build",
+		"build:watch": "tsc --watch",
+		"dev": "n8n-node dev",
+		"lint": "n8n-node lint",
+		"lint:fix": "n8n-node lint --fix",
+		"release": "n8n-node release",
+		"prepublishOnly": "n8n-node prerelease",
+		"gen": "node scripts/gen-properties.mjs"
+	},
+	"files": [
+		"dist"
+	],
+	"n8n": {
+		"n8nNodesApiVersion": 1,
+		"strict": true,
+		"credentials": [
+			"dist/credentials/GlasserApi.credentials.js"
+		],
+		"nodes": [
+			"dist/nodes/Glasser/Glasser.node.js"
+		]
+	},
+	"devDependencies": {
+		"@n8n/node-cli": "*",
+		"eslint": "9.32.0",
+		"prettier": "3.6.2",
+		"release-it": "^19.0.4",
+		"typescript": "5.9.2"
+	},
+	"peerDependencies": {
+		"n8n-workflow": "*"
+	}
+}
