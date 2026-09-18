@@ -32,7 +32,7 @@ The node holds no routing table and no state. Its parameters are generated from 
 
 ## Example workflow
 
-`examples/glasser-demo.json` is a workflow to import (Workflow menu → Import from file): it finds the CTO of a domain, looks up that person's work email, searches the web and reads a domain rating. Pick your Glasser API credential on each node and execute.
+`examples/glasser-demo.json` is a workflow to import (Workflow menu → Import from file): it searches people at a domain, finds a work email, searches the web and reads a domain rating. Pick your Glasser API credential on each node and execute.
 
 ## Installation
 

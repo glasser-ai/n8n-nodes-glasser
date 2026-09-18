@@ -34,11 +34,11 @@
         "resource": "people_search",
         "operation": "find_email",
         "provider": "auto",
-        "full_name": "={{ $json.output.people[0].name }}",
+        "full_name": "Patrick Collison",
         "company_domain": "stripe.com"
       },
       "id": "email",
-      "name": "Find that person's work email",
+      "name": "Find a work email",
       "type": "n8n-nodes-glasser.glasser",
       "typeVersion": 1,
       "position": [
@@ -101,7 +101,7 @@
       "main": [
         [
           {
-            "node": "Find that person's work email",
+            "node": "Find a work email",
             "type": "main",
             "index": 0
           }
