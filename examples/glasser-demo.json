@@ -1,0 +1,126 @@
+{
+  "name": "Glasser demo",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual",
+      "name": "When clicking 'Execute workflow'",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "people_search",
+        "operation": "search",
+        "provider": "auto",
+        "job_titles": "CTO",
+        "company_domain": "stripe.com"
+      },
+      "id": "people",
+      "name": "Find the CTO of stripe.com",
+      "type": "n8n-nodes-glasser.glasser",
+      "typeVersion": 1,
+      "position": [
+        260,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "people_search",
+        "operation": "find_email",
+        "provider": "auto",
+        "full_name": "={{ $json.output.people[0].name }}",
+        "company_domain": "stripe.com"
+      },
+      "id": "email",
+      "name": "Find that person's work email",
+      "type": "n8n-nodes-glasser.glasser",
+      "typeVersion": 1,
+      "position": [
+        520,
+        -120
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "web_research",
+        "operation": "search",
+        "provider": "auto",
+        "query": "Stripe Atlas pricing",
+        "country": "us"
+      },
+      "id": "web",
+      "name": "Search the web",
+      "type": "n8n-nodes-glasser.glasser",
+      "typeVersion": 1,
+      "position": [
+        260,
+        120
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "seo_research",
+        "operation": "domain_rating",
+        "provider": "auto",
+        "domain": "stripe.com"
+      },
+      "id": "seo",
+      "name": "Domain rating",
+      "type": "n8n-nodes-glasser.glasser",
+      "typeVersion": 1,
+      "position": [
+        520,
+        120
+      ]
+    }
+  ],
+  "connections": {
+    "When clicking 'Execute workflow'": {
+      "main": [
+        [
+          {
+            "node": "Find the CTO of stripe.com",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Search the web",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find the CTO of stripe.com": {
+      "main": [
+        [
+          {
+            "node": "Find that person's work email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search the web": {
+      "main": [
+        [
+          {
+            "node": "Domain rating",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  }
+}
