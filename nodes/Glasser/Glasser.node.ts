@@ -12,6 +12,7 @@ import type {
 import { NodeApiError, NodeConnectionTypes, sleep } from 'n8n-workflow';
 
 import { properties, RESOURCE_META, SOLUTION } from './properties';
+import { version } from '../../package.json';
 
 const BASE_URL = 'https://api.glasser.ai';
 const TERMINAL = new Set(['COMPLETED', 'FAILED', 'STOPPED']);
@@ -115,6 +116,13 @@ function requestBody(this: IExecuteFunctions, resource: string, itemIndex: numbe
  * Idempotency-Key is generated once per call, so a transport retry inside
  * n8n's request helper reads the original run instead of paying twice.
  */
+/**
+ * 报给 Glasser 的身份:`name/version (+repo)`,RFC 9110 的 product token 写法。
+ * 服务端从第一个 token 解析出 client_name 与 client_version,PostHog 按它分渠道;
+ * 版本从 package.json 读,发版只改一处。
+ */
+const USER_AGENT = `n8n-nodes-glasser/${version} (+https://github.com/glasser-ai/n8n-nodes-glasser)`;
+
 async function callSolution(
 	this: IExecuteFunctions,
 	resource: string,
@@ -125,7 +133,7 @@ async function callSolution(
 		url: `${BASE_URL}/v1/solutions/${SOLUTION}/${resource}`,
 		headers: {
 			'Idempotency-Key': randomUUID(),
-			'User-Agent': 'n8n-nodes-glasser (+https://github.com/glasser-ai/n8n-nodes-glasser)',
+			'User-Agent': USER_AGENT,
 		},
 		body,
 		json: true,
