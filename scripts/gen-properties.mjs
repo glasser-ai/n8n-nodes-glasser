@@ -102,6 +102,8 @@ const OPTIONS = {
 	answer: 'Answer From the Web', scrape: 'Read a Web Page', similar: 'Similar Pages',
 	reddit: 'Reddit', x: 'X', youtube: 'YouTube', tiktok: 'TikTok', instagram: 'Instagram', linkedin: 'LinkedIn',
 	profile: 'Profile', feed: 'Recent Posts', post: 'One Post', find: 'Find Social Profiles',
+	// seniorities: titleCase() would render these as 'Vp' and 'C Suite'
+	vp: 'VP', c_suite: 'C-Suite',
 	property_value: 'Property Value Estimate', property_rent: 'Rent Estimate', property_search: 'Property Records',
 	listings_sale: 'For-Sale Listings', listings_rental: 'Rental Listings', market_stats: 'ZIP Market Statistics', stock_quote: 'Stock Quote',
 };
@@ -153,6 +155,14 @@ function describe(text) {
 	const sentences = t.replace(/\b(e\.g\.|i\.e\.)/g, 'xx').split(/(?<=[.!?])\s+/).length;
 	if (sentences === 1) t = t.replace(/[.]$/, '');
 	return t;
+}
+
+/**
+ * A dropdown already shows every value it accepts, so the contract's trailing
+ * ", one or more of a, b, c" clause only repeats it in the user's own words.
+ */
+function withoutEnumList(text) {
+	return text.replace(/,\s*one (?:or more )?of\s+[^.]*/i, '');
 }
 
 function sentenceCase(text) {
@@ -208,6 +218,7 @@ function buildProperty(resource, name, prop, required) {
 	if (!displayName) throw new Error(`${resource}.${name}: no display name in FIELDS; add one`);
 	const raw = schema.description ?? FIELD_DESCRIPTIONS[`${resource}.${name}`] ?? FIELD_DESCRIPTIONS[name];
 	const description = raw === undefined ? undefined : describe(raw);
+	const dropdownDescription = raw === undefined ? undefined : describe(withoutEnumList(raw));
 	const base = { displayName, name, required: required || undefined, description, displayOptions: { show: { resource: [resource] } } };
 
 	if (schema.enum) {
@@ -222,6 +233,7 @@ function buildProperty(resource, name, prop, required) {
 		const fallback = defaultOf(schema, resource, name) ?? (name === 'provider' ? 'auto' : schema.enum[0]);
 		return {
 			...base,
+			description: dropdownDescription,
 			name: isOperation ? 'operation' : name,
 			type: 'options',
 			noDataExpression: isOperation || name === 'platform' || name === 'mode' || undefined,
@@ -234,6 +246,7 @@ function buildProperty(resource, name, prop, required) {
 		if (items.enum) {
 			return {
 				...base,
+				description: dropdownDescription,
 				type: 'multiOptions',
 				options: items.enum.map((value) => ({ name: label(value), value })).sort((a, b) => a.name.localeCompare(b.name)),
 				default: [],

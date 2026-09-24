@@ -155,8 +155,7 @@ export const properties: INodeProperties[] = [
 	{
 		displayName: 'Seniorities',
 		name: 'seniorities',
-		description:
-			'Seniority levels, one or more of owner, founder, c_suite, partner, vp, head, director, manager, senior, entry, intern',
+		description: 'Seniority levels',
 		displayOptions: {
 			show: {
 				resource: ['people_search'],
@@ -165,7 +164,7 @@ export const properties: INodeProperties[] = [
 		type: 'multiOptions',
 		options: [
 			{
-				name: 'C Suite',
+				name: 'C-Suite',
 				value: 'c_suite',
 			},
 			{
@@ -205,7 +204,7 @@ export const properties: INodeProperties[] = [
 				value: 'senior',
 			},
 			{
-				name: 'Vp',
+				name: 'VP',
 				value: 'vp',
 			},
 		],
@@ -738,7 +737,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Mode',
 		name: 'mode',
 		description:
-			"Default search. search: posts matching query. profile: the account itself — bio, follower counts, links — from handle (reddit: the subreddit; linkedin: URL of a person's profile or a company page). feed: the account's recent posts or videos, from handle (linkedin: URL of a company page). post: one post or video from URL. find: an account's other social profiles, from handle.",
+			"Default search. search: posts matching query. profile: the account itself — bio, follower counts, links — from handle (reddit: the subreddit; linkedin: URL of a person's profile or a company page). feed: the account's recent posts or videos, from handle (linkedin: URL of a company page). post: one post or video from URL. find: an account's other social profiles, from handle (linkedin: URL of a person's profile; reddit: subreddits matching query). Every platform supports every mode.",
 		displayOptions: {
 			show: {
 				resource: ['social_research'],
@@ -774,7 +773,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Provider',
 		name: 'provider',
 		description:
-			'Data provider: auto (default) or one of scrapecreators, apify, tikhub. Name one only when the caller asks for that vendor.',
+			'Data provider: auto (default) or one of scrapecreators, apify, tikhub, pdl. Name one only when the caller asks for that vendor.',
 		displayOptions: {
 			show: {
 				resource: ['social_research'],
@@ -789,6 +788,10 @@ export const properties: INodeProperties[] = [
 			{
 				name: 'Auto (Glasser Picks)',
 				value: 'auto',
+			},
+			{
+				name: 'People Data Labs',
+				value: 'pdl',
 			},
 			{
 				name: 'ScrapeCreators',

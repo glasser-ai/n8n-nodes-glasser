@@ -16,6 +16,8 @@
 		"esModuleInterop": true,
 		"resolveJsonModule": true,
 		"incremental": true,
+		// Out of dist/: the build cache is not part of the published package.
+		"tsBuildInfoFile": "./node_modules/.cache/n8n-node/tsconfig.tsbuildinfo",
 		"declaration": true,
 		"sourceMap": true,
 		"skipLibCheck": true,

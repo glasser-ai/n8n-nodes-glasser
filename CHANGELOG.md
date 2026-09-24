@@ -3,6 +3,9 @@
 ## 0.1.3
 
 - Rewrite the `USER_AGENT` doc comment in English. n8n Cloud's manual review requires every code comment to be in English; no functional change.
+- Social: the `pdl` provider the contract now offers, and the `Mode` description the contract now carries. Regenerating `properties.ts` picked both up; the node had drifted from the API.
+- Seniorities: label the options `VP` and `C-Suite` instead of the `Vp` and `C Suite` the generic title-caser produced, and drop the enum list the dropdown already shows from the description. A dropdown built from the contract no longer repeats its own values.
+- Keep the TypeScript build cache out of `dist/`. The published tarball drops from 72 kB to 15 kB.
 
 ## 0.1.2
 
