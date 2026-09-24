@@ -111,18 +111,19 @@ function requestBody(this: IExecuteFunctions, resource: string, itemIndex: numbe
 }
 
 /**
+ * The identity we report to Glasser: `name/version (+repo)`, the product
+ * token form from RFC 9110. The server parses client_name and client_version
+ * out of the first token, and PostHog splits channels by them. The version
+ * is read from package.json, so a release only changes it in one place.
+ */
+const USER_AGENT = `n8n-nodes-glasser/${version} (+https://github.com/glasser-ai/n8n-nodes-glasser)`;
+
+/**
  * POST the solution call and, when the run is still in flight, poll
  * GET /v1/runs/{id} until it is terminal or the budget is spent. The
  * Idempotency-Key is generated once per call, so a transport retry inside
  * n8n's request helper reads the original run instead of paying twice.
  */
-/**
- * 报给 Glasser 的身份:`name/version (+repo)`,RFC 9110 的 product token 写法。
- * 服务端从第一个 token 解析出 client_name 与 client_version,PostHog 按它分渠道;
- * 版本从 package.json 读,发版只改一处。
- */
-const USER_AGENT = `n8n-nodes-glasser/${version} (+https://github.com/glasser-ai/n8n-nodes-glasser)`;
-
 async function callSolution(
 	this: IExecuteFunctions,
 	resource: string,
