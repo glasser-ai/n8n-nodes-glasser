@@ -12,18 +12,20 @@ One node, one credential. `usableAsTool` is on, so the same node works as a step
 | **Company** | Enrich, Technology stack, Website traffic, Competitors, Funding rounds, News | Apollo, PDL, Hunter, Prospeo, PredictLeads, LeadMagic, BuiltWith, DataForSEO, Ahrefs, Apify, Exa, Serper |
 | **SEO** | Keyword metrics, Keyword ideas, Search results for a keyword, Domain organic overview, Ranked keywords, Organic search competitors, Backlink totals, Backlinks, Referring domains, Domain rating | Semrush, Serpstat, DataForSEO, Ahrefs, Serper |
 | **Web Research** | Search the web, News, Places, Academic papers, Shopping, Images, Videos, Answer from the web, Read a web page, Similar pages | Serper, SerpApi, Exa, DataForSEO |
-| **Social** | Platform (Reddit, X, YouTube, TikTok, Instagram, LinkedIn) × Mode (Search, Profile, Recent posts, One post, Find social profiles) | ScrapeCreators, Apify, TikHub |
+| **Social** | Search, Profile, Recent posts, One post, Find social profiles — on Reddit, X, YouTube, TikTok, Instagram or LinkedIn (the **Platform** field) | ScrapeCreators, Apify, TikHub, People Data Labs |
 | **Market Data** | Property value estimate, Rent estimate, Property records, Listings for sale, Rental listings, ZIP market statistics, Stock quote | RentCast, SerpApi |
 
-Every resource has a **Provider** field. `Auto` (the default) lets Glasser pick the source for the operation and fall back to the next one on a provider error; naming a provider forces it.
+Each operation shows only the inputs it requires. Where the API accepts one of several identifiers, a selector picks it: **Lookup By** (LinkedIn URL, Email, or Name and Company) for Enrich a person, **Search By** (Address, City and State, or ZIP Code) for Property Records and listings. Optional inputs are under **Filters** (Search people), **Additional Fields** (`Country`) and **Options**.
+
+**Options → Provider** exists on every resource. `Auto` (the default) lets Glasser pick the source for the operation and fall back to the next one on a provider error; naming a provider forces it.
 
 ## How a call works
 
-1. The node sends its parameters as they are to `POST https://api.glasser.ai/v1/solutions/gtm/<resource>` with a fresh idempotency key. Comma-separated fields become arrays; nothing else is changed.
+1. The node sends the parameters its form shows, flattened, to `POST https://api.glasser.ai/v1/solutions/gtm/<resource>` with a fresh idempotency key. Comma-separated fields become arrays; the Lookup By / Search By selectors are not sent; nothing else is changed.
 2. Glasser resolves `(operation, provider)` to one endpoint, translates the fields into that endpoint's native input, runs it, and under `Auto` moves to the next source on a provider error. It never falls back on an empty answer: "no result" is an answer.
 3. The output item is the run exactly as the Glasser API returns it: `provider` and `endpoint` say who served the call, `input` is what was sent, `output` is the provider's own payload, `charge_usd` is the exact charge as a decimal string, `run_url` opens it in the console. An async run is polled until it is terminal (up to 180 seconds).
 
-The node holds no routing table and no state. Its parameters are generated from the Glasser OpenAPI document (`scripts/gen-properties.mjs`), so they cannot drift from the API.
+The node holds no routing table and no state. Its parameters are generated from the Glasser OpenAPI document (`scripts/gen-properties.mjs`): field names, types, enums and descriptions come from the contract, and the generator only adds the form layout — which inputs each operation requires and which are optional.
 
 ## Credentials
 

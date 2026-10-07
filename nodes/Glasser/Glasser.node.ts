@@ -5,13 +5,14 @@ import type {
 	IExecuteFunctions,
 	IHttpRequestOptions,
 	INodeExecutionData,
+	INodeProperties,
 	INodeType,
 	INodeTypeDescription,
 	JsonObject,
 } from 'n8n-workflow';
 import { NodeApiError, NodeConnectionTypes, sleep } from 'n8n-workflow';
 
-import { properties, RESOURCE_META, SOLUTION } from './properties';
+import { NODE_ONLY, properties, RESOURCE_META, SOLUTION } from './properties';
 import { version } from '../../package.json';
 
 const BASE_URL = 'https://api.glasser.ai';
@@ -35,7 +36,7 @@ export class Glasser implements INodeType {
 		icon: { light: 'file:glasser.svg', dark: 'file:glasser.dark.svg' },
 		group: ['transform'],
 		version: 1,
-		subtitle: '={{ $parameter["operation"] || $parameter["mode"] }}: {{ $parameter["resource"] }}',
+		subtitle: '={{ $parameter["operation"] + ": " + $parameter["resource"] }}',
 		description:
 			'Premium data for people, companies, SEO, the web, social media and markets through one Glasser Key. Say what data you want; Glasser picks the provider.',
 		defaults: {
@@ -80,34 +81,61 @@ export class Glasser implements INodeType {
 }
 
 /**
- * The contract's request body from the node's parameters: blanks dropped,
+ * The contract's request body from the node's parameters: every parameter
+ * the form currently shows, with the Filters / Additional Fields / Options
+ * collections flattened into it, the Operation dropdown written back to the
+ * contract's field (action, or mode for social), blanks dropped, and
  * comma-separated strings split for the fields the API takes as arrays.
+ * The Lookup By / Search By selectors only shape the form and are not sent.
  * Everything else is the API's to validate, so its own error reaches the user.
  */
 function requestBody(this: IExecuteFunctions, resource: string, itemIndex: number): IDataObject {
 	const meta = RESOURCE_META[resource];
 	const body: IDataObject = {};
-	for (const property of properties) {
-		const shown = property.displayOptions?.show?.resource as string[] | undefined;
-		if (!shown || !shown.includes(resource)) continue;
-		const raw = this.getNodeParameter(property.name, itemIndex, '') as unknown;
-		if (raw === undefined || raw === null || raw === '') continue;
+	const put = (name: string, raw: unknown) => {
+		if (raw === undefined || raw === null || raw === '') return;
 		if (Array.isArray(raw)) {
-			if (raw.length > 0) body[property.name] = raw;
-			continue;
+			if (raw.length > 0) body[name] = raw;
+			return;
 		}
-		const name = property.name === 'operation' ? 'action' : property.name;
 		if (meta.lists.includes(name)) {
 			const parts = String(raw)
 				.split(',')
 				.map((s) => s.trim())
 				.filter(Boolean);
 			if (parts.length > 0) body[name] = parts;
-			continue;
+			return;
 		}
 		body[name] = typeof raw === 'string' ? raw.trim() : (raw as IDataObject[keyof IDataObject]);
+	};
+
+	for (const property of properties) {
+		if (property.name === 'resource' || NODE_ONLY.has(property.name)) continue;
+		if (!isShown.call(this, property, itemIndex)) continue;
+		if (property.type === 'collection') {
+			const fields = this.getNodeParameter(property.name, itemIndex, {}) as IDataObject;
+			for (const [name, raw] of Object.entries(fields)) put(name, raw);
+			continue;
+		}
+		const name = property.name === 'operation' ? meta.operation : property.name;
+		put(name, this.getNodeParameter(property.name, itemIndex, ''));
 	}
 	return body;
+}
+
+/**
+ * Whether the form shows this property for the current item, by the same
+ * rule n8n's UI applies: every `show` condition must hold, any `hide`
+ * condition hides. The generated displayOptions only ever compare a
+ * parameter against a list of values, so that is all this evaluates.
+ */
+function isShown(this: IExecuteFunctions, property: INodeProperties, itemIndex: number): boolean {
+	const { show, hide } = property.displayOptions ?? {};
+	const holds = ([name, values]: [string, unknown]) =>
+		(values as unknown[]).includes(this.getNodeParameter(name, itemIndex, ''));
+	if (show && !Object.entries(show).every(holds)) return false;
+	if (hide && Object.entries(hide).some(holds)) return false;
+	return true;
 }
 
 /**

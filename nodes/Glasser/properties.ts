@@ -4,33 +4,36 @@ import type { INodeProperties } from 'n8n-workflow';
 /** Solution the node calls: POST /v1/solutions/gtm/<resource>. */
 export const SOLUTION = 'gtm';
 
-/** Per resource: which string fields the API takes as arrays (the node splits commas). */
-export const RESOURCE_META: Record<string, { lists: string[]; hasOperation: boolean }> = {
+/** Per resource: the contract field the Operation dropdown maps to, and which string fields the API takes as arrays (the node splits commas). */
+export const RESOURCE_META: Record<string, { operation: string; lists: string[] }> = {
 	people_search: {
+		operation: 'action',
 		lists: ['job_titles', 'locations'],
-		hasOperation: true,
 	},
 	company_intelligence: {
+		operation: 'action',
 		lists: [],
-		hasOperation: true,
 	},
 	seo_research: {
+		operation: 'action',
 		lists: ['keywords'],
-		hasOperation: true,
 	},
 	web_research: {
+		operation: 'action',
 		lists: [],
-		hasOperation: true,
 	},
 	social_research: {
+		operation: 'mode',
 		lists: [],
-		hasOperation: false,
 	},
 	market_data: {
+		operation: 'action',
 		lists: [],
-		hasOperation: true,
 	},
 };
+
+/** Parameters that only shape the form (which fields to show) and are never sent to the API. */
+export const NODE_ONLY: ReadonlySet<string> = new Set(['lookupBy', 'searchBy']);
 
 export const properties: INodeProperties[] = [
 	{
@@ -98,180 +101,267 @@ export const properties: INodeProperties[] = [
 		default: 'search',
 	},
 	{
-		displayName: 'Provider',
-		name: 'provider',
-		description:
-			'Data provider: auto (default) or one of apollo, pdl, leadmagic, zoominfo, hunter, prospeo. Name one only when the caller asks for that vendor.',
+		displayName: 'Filters',
+		name: 'filters',
+		type: 'collection',
+		placeholder: 'Add Filter',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['people_search'],
+				operation: ['search'],
 			},
 		},
+		options: [
+			{
+				displayName: 'Company Domain',
+				name: 'company_domain',
+				description:
+					'A website domain such as stripe.com. A full URL is accepted and reduced to its host.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Job Titles',
+				name: 'job_titles',
+				description: "Job titles, e.g. 'CTO, VP Engineering'.. Comma-separated, up to 20.",
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Locations',
+				name: 'locations',
+				description: 'Cities, states or countries.. Comma-separated, up to 20.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Seniorities',
+				name: 'seniorities',
+				description: 'Seniority levels',
+				type: 'multiOptions',
+				options: [
+					{
+						name: 'C-Suite',
+						value: 'c_suite',
+					},
+					{
+						name: 'Director',
+						value: 'director',
+					},
+					{
+						name: 'Entry',
+						value: 'entry',
+					},
+					{
+						name: 'Founder',
+						value: 'founder',
+					},
+					{
+						name: 'Head',
+						value: 'head',
+					},
+					{
+						name: 'Intern',
+						value: 'intern',
+					},
+					{
+						name: 'Manager',
+						value: 'manager',
+					},
+					{
+						name: 'Owner',
+						value: 'owner',
+					},
+					{
+						name: 'Partner',
+						value: 'partner',
+					},
+					{
+						name: 'Senior',
+						value: 'senior',
+					},
+					{
+						name: 'VP',
+						value: 'vp',
+					},
+				],
+				default: [],
+			},
+		],
+	},
+	{
+		displayName: 'Lookup By',
+		name: 'lookupBy',
 		type: 'options',
+		required: true,
+		noDataExpression: true,
+		description: 'Which identifier the person is looked up by',
+		displayOptions: {
+			show: {
+				resource: ['people_search'],
+				operation: ['enrich'],
+			},
+		},
 		options: [
 			{
-				name: 'Apollo',
-				value: 'apollo',
+				name: 'Email',
+				value: 'email',
 			},
 			{
-				name: 'Auto (Glasser Picks)',
-				value: 'auto',
+				name: 'LinkedIn URL',
+				value: 'linkedin_url',
 			},
 			{
-				name: 'Hunter',
-				value: 'hunter',
-			},
-			{
-				name: 'LeadMagic',
-				value: 'leadmagic',
-			},
-			{
-				name: 'People Data Labs',
-				value: 'pdl',
-			},
-			{
-				name: 'Prospeo',
-				value: 'prospeo',
-			},
-			{
-				name: 'ZoomInfo',
-				value: 'zoominfo',
+				name: 'Name and Company',
+				value: 'name_company',
 			},
 		],
-		default: 'auto',
-	},
-	{
-		displayName: 'Job Titles',
-		name: 'job_titles',
-		description: "Job titles, e.g. 'CTO, VP Engineering'.. Comma-separated, up to 20.",
-		displayOptions: {
-			show: {
-				resource: ['people_search'],
-			},
-		},
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Seniorities',
-		name: 'seniorities',
-		description: 'Seniority levels',
-		displayOptions: {
-			show: {
-				resource: ['people_search'],
-			},
-		},
-		type: 'multiOptions',
-		options: [
-			{
-				name: 'C-Suite',
-				value: 'c_suite',
-			},
-			{
-				name: 'Director',
-				value: 'director',
-			},
-			{
-				name: 'Entry',
-				value: 'entry',
-			},
-			{
-				name: 'Founder',
-				value: 'founder',
-			},
-			{
-				name: 'Head',
-				value: 'head',
-			},
-			{
-				name: 'Intern',
-				value: 'intern',
-			},
-			{
-				name: 'Manager',
-				value: 'manager',
-			},
-			{
-				name: 'Owner',
-				value: 'owner',
-			},
-			{
-				name: 'Partner',
-				value: 'partner',
-			},
-			{
-				name: 'Senior',
-				value: 'senior',
-			},
-			{
-				name: 'VP',
-				value: 'vp',
-			},
-		],
-		default: [],
-	},
-	{
-		displayName: 'Locations',
-		name: 'locations',
-		description: 'Cities, states or countries.. Comma-separated, up to 20.',
-		displayOptions: {
-			show: {
-				resource: ['people_search'],
-			},
-		},
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Company Domain',
-		name: 'company_domain',
-		description:
-			'A website domain such as stripe.com. A full URL is accepted and reduced to its host.',
-		displayOptions: {
-			show: {
-				resource: ['people_search'],
-			},
-		},
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Full Name',
-		name: 'full_name',
-		description: "The person's full name, e.g. 'Patrick Collison'",
-		displayOptions: {
-			show: {
-				resource: ['people_search'],
-			},
-		},
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Email',
-		name: 'email',
-		description: 'An email address',
-		displayOptions: {
-			show: {
-				resource: ['people_search'],
-			},
-		},
-		type: 'string',
-		default: '',
-		placeholder: 'name@email.com',
+		default: 'linkedin_url',
 	},
 	{
 		displayName: 'LinkedIn URL',
 		name: 'linkedin_url',
 		description:
 			"The person's LinkedIn profile URL, linkedin.com/in/&lt;slug&gt;. Not a company page.",
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['people_search'],
+				operation: ['enrich'],
+				lookupBy: ['linkedin_url'],
+			},
+		},
+	},
+	{
+		displayName: 'Email',
+		name: 'email',
+		description: 'An email address',
+		type: 'string',
+		default: '',
+		placeholder: 'name@email.com',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['people_search'],
+				operation: ['enrich'],
+				lookupBy: ['email'],
+			},
+		},
+	},
+	{
+		displayName: 'Full Name',
+		name: 'full_name',
+		description: "The person's full name, e.g. 'Patrick Collison'",
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['people_search'],
+				operation: ['enrich'],
+				lookupBy: ['name_company'],
+			},
+		},
+	},
+	{
+		displayName: 'Company Domain',
+		name: 'company_domain',
+		description:
+			'A website domain such as stripe.com. A full URL is accepted and reduced to its host.',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['people_search'],
+				operation: ['enrich'],
+				lookupBy: ['name_company'],
+			},
+		},
+	},
+	{
+		displayName: 'Full Name',
+		name: 'full_name',
+		description: "The person's full name, e.g. 'Patrick Collison'",
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['people_search'],
+				operation: ['find_email'],
+			},
+		},
+	},
+	{
+		displayName: 'Company Domain',
+		name: 'company_domain',
+		description:
+			'A website domain such as stripe.com. A full URL is accepted and reduced to its host.',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['people_search'],
+				operation: ['find_email'],
+			},
+		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['people_search'],
 			},
 		},
-		type: 'string',
-		default: '',
+		options: [
+			{
+				displayName: 'Provider',
+				name: 'provider',
+				description:
+					'Data provider: auto (default) or one of apollo, pdl, leadmagic, zoominfo, hunter, prospeo. Name one only when the caller asks for that vendor.',
+				type: 'options',
+				options: [
+					{
+						name: 'Apollo',
+						value: 'apollo',
+					},
+					{
+						name: 'Auto (Glasser Picks)',
+						value: 'auto',
+					},
+					{
+						name: 'Hunter',
+						value: 'hunter',
+					},
+					{
+						name: 'LeadMagic',
+						value: 'leadmagic',
+					},
+					{
+						name: 'People Data Labs',
+						value: 'pdl',
+					},
+					{
+						name: 'Prospeo',
+						value: 'prospeo',
+					},
+					{
+						name: 'ZoomInfo',
+						value: 'zoominfo',
+					},
+				],
+				default: 'auto',
+			},
+		],
 	},
 	{
 		displayName: 'Operation',
@@ -320,98 +410,116 @@ export const properties: INodeProperties[] = [
 		default: 'enrich',
 	},
 	{
-		displayName: 'Provider',
-		name: 'provider',
-		description:
-			'Data provider: auto (default) or one of apollo, pdl, hunter, prospeo, predictleads, leadmagic, builtwith, dataforseo, ahrefs, apify, exa, serper. Name one only when the caller asks for that vendor.',
-		displayOptions: {
-			show: {
-				resource: ['company_intelligence'],
-			},
-		},
-		type: 'options',
-		options: [
-			{
-				name: 'Ahrefs',
-				value: 'ahrefs',
-			},
-			{
-				name: 'Apify',
-				value: 'apify',
-			},
-			{
-				name: 'Apollo',
-				value: 'apollo',
-			},
-			{
-				name: 'Auto (Glasser Picks)',
-				value: 'auto',
-			},
-			{
-				name: 'BuiltWith',
-				value: 'builtwith',
-			},
-			{
-				name: 'DataForSEO',
-				value: 'dataforseo',
-			},
-			{
-				name: 'Exa',
-				value: 'exa',
-			},
-			{
-				name: 'Hunter',
-				value: 'hunter',
-			},
-			{
-				name: 'LeadMagic',
-				value: 'leadmagic',
-			},
-			{
-				name: 'People Data Labs',
-				value: 'pdl',
-			},
-			{
-				name: 'PredictLeads',
-				value: 'predictleads',
-			},
-			{
-				name: 'Prospeo',
-				value: 'prospeo',
-			},
-			{
-				name: 'Serper',
-				value: 'serper',
-			},
-		],
-		default: 'auto',
-	},
-	{
 		displayName: 'Domain',
 		name: 'domain',
-		required: true,
 		description:
 			'A website domain such as stripe.com. A full URL is accepted and reduced to its host.',
+		type: 'string',
+		default: '',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: ['company_intelligence'],
 			},
 		},
-		type: 'string',
-		default: '',
 	},
 	{
-		displayName: 'Country',
-		name: 'country',
-		description:
-			'Country as a two-letter ISO code or a country name, e.g. us, gb, de, Germany. Default us. An unsupported country is refused with the supported list.',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['company_intelligence'],
 			},
 		},
-		type: 'string',
-		default: '',
+		options: [
+			{
+				displayName: 'Country',
+				name: 'country',
+				description:
+					'Country as a two-letter ISO code or a country name, e.g. us, gb, de, Germany. Default us. An unsupported country is refused with the supported list.',
+				type: 'string',
+				default: '',
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['company_intelligence'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Provider',
+				name: 'provider',
+				description:
+					'Data provider: auto (default) or one of apollo, pdl, hunter, prospeo, predictleads, leadmagic, builtwith, dataforseo, ahrefs, apify, exa, serper. Name one only when the caller asks for that vendor.',
+				type: 'options',
+				options: [
+					{
+						name: 'Ahrefs',
+						value: 'ahrefs',
+					},
+					{
+						name: 'Apify',
+						value: 'apify',
+					},
+					{
+						name: 'Apollo',
+						value: 'apollo',
+					},
+					{
+						name: 'Auto (Glasser Picks)',
+						value: 'auto',
+					},
+					{
+						name: 'BuiltWith',
+						value: 'builtwith',
+					},
+					{
+						name: 'DataForSEO',
+						value: 'dataforseo',
+					},
+					{
+						name: 'Exa',
+						value: 'exa',
+					},
+					{
+						name: 'Hunter',
+						value: 'hunter',
+					},
+					{
+						name: 'LeadMagic',
+						value: 'leadmagic',
+					},
+					{
+						name: 'People Data Labs',
+						value: 'pdl',
+					},
+					{
+						name: 'PredictLeads',
+						value: 'predictleads',
+					},
+					{
+						name: 'Prospeo',
+						value: 'prospeo',
+					},
+					{
+						name: 'Serper',
+						value: 'serper',
+					},
+				],
+				default: 'auto',
+			},
+		],
 	},
 	{
 		displayName: 'Operation',
@@ -480,81 +588,143 @@ export const properties: INodeProperties[] = [
 		default: 'keyword_overview',
 	},
 	{
-		displayName: 'Provider',
-		name: 'provider',
-		description:
-			'Data provider: auto (default) or one of semrush, serpstat, dataforseo, ahrefs, serper. Name one only when the caller asks for that vendor.',
-		displayOptions: {
-			show: {
-				resource: ['seo_research'],
-			},
-		},
-		type: 'options',
-		options: [
-			{
-				name: 'Ahrefs',
-				value: 'ahrefs',
-			},
-			{
-				name: 'Auto (Glasser Picks)',
-				value: 'auto',
-			},
-			{
-				name: 'DataForSEO',
-				value: 'dataforseo',
-			},
-			{
-				name: 'Semrush',
-				value: 'semrush',
-			},
-			{
-				name: 'Serper',
-				value: 'serper',
-			},
-			{
-				name: 'Serpstat',
-				value: 'serpstat',
-			},
-		],
-		default: 'auto',
-	},
-	{
 		displayName: 'Keywords',
 		name: 'keywords',
 		description: "Keywords to look up, e.g. 'espresso machine'.. Comma-separated, up to 20.",
+		type: 'string',
+		default: '',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: ['seo_research'],
+				operation: ['keyword_overview', 'keyword_ideas', 'serp'],
 			},
 		},
-		type: 'string',
-		default: '',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['seo_research'],
+				operation: ['keyword_overview', 'keyword_ideas', 'serp'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Country',
+				name: 'country',
+				description:
+					'Country as a two-letter ISO code or a country name, e.g. us, gb, de, Germany. Default us. An unsupported country is refused with the supported list.',
+				type: 'string',
+				default: '',
+			},
+		],
 	},
 	{
 		displayName: 'Domain',
 		name: 'domain',
 		description:
 			'A website domain such as stripe.com. A full URL is accepted and reduced to its host.',
+		type: 'string',
+		default: '',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: ['seo_research'],
+				operation: [
+					'domain_overview',
+					'ranked_keywords',
+					'organic_competitors',
+					'backlinks_overview',
+					'backlinks',
+					'referring_domains',
+					'domain_rating',
+				],
 			},
 		},
-		type: 'string',
-		default: '',
 	},
 	{
-		displayName: 'Country',
-		name: 'country',
-		description:
-			'Country as a two-letter ISO code or a country name, e.g. us, gb, de, Germany. Default us. An unsupported country is refused with the supported list.',
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['seo_research'],
+				operation: [
+					'domain_overview',
+					'ranked_keywords',
+					'organic_competitors',
+					'backlinks_overview',
+					'backlinks',
+					'referring_domains',
+					'domain_rating',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Country',
+				name: 'country',
+				description:
+					'Country as a two-letter ISO code or a country name, e.g. us, gb, de, Germany. Default us. An unsupported country is refused with the supported list.',
+				type: 'string',
+				default: '',
+			},
+		],
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['seo_research'],
 			},
 		},
-		type: 'string',
-		default: '',
+		options: [
+			{
+				displayName: 'Provider',
+				name: 'provider',
+				description:
+					'Data provider: auto (default) or one of semrush, serpstat, dataforseo, ahrefs, serper. Name one only when the caller asks for that vendor.',
+				type: 'options',
+				options: [
+					{
+						name: 'Ahrefs',
+						value: 'ahrefs',
+					},
+					{
+						name: 'Auto (Glasser Picks)',
+						value: 'auto',
+					},
+					{
+						name: 'DataForSEO',
+						value: 'dataforseo',
+					},
+					{
+						name: 'Semrush',
+						value: 'semrush',
+					},
+					{
+						name: 'Serper',
+						value: 'serper',
+					},
+					{
+						name: 'Serpstat',
+						value: 'serpstat',
+					},
+				],
+				default: 'auto',
+			},
+		],
 	},
 	{
 		displayName: 'Operation',
@@ -623,81 +793,123 @@ export const properties: INodeProperties[] = [
 		default: 'search',
 	},
 	{
-		displayName: 'Provider',
-		name: 'provider',
-		description:
-			'Data provider: auto (default) or one of serper, serpapi, exa, dataforseo. Name one only when the caller asks for that vendor.',
-		displayOptions: {
-			show: {
-				resource: ['web_research'],
-			},
-		},
-		type: 'options',
-		options: [
-			{
-				name: 'Auto (Glasser Picks)',
-				value: 'auto',
-			},
-			{
-				name: 'DataForSEO',
-				value: 'dataforseo',
-			},
-			{
-				name: 'Exa',
-				value: 'exa',
-			},
-			{
-				name: 'SerpApi',
-				value: 'serpapi',
-			},
-			{
-				name: 'Serper',
-				value: 'serper',
-			},
-		],
-		default: 'auto',
-	},
-	{
 		displayName: 'Query',
 		name: 'query',
 		description: 'Search phrase or question',
+		type: 'string',
+		default: '',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: ['web_research'],
+				operation: [
+					'search',
+					'news',
+					'places',
+					'scholar',
+					'shopping',
+					'images',
+					'videos',
+					'answer',
+				],
 			},
 		},
-		type: 'string',
-		default: '',
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['web_research'],
+				operation: [
+					'search',
+					'news',
+					'places',
+					'scholar',
+					'shopping',
+					'images',
+					'videos',
+					'answer',
+				],
+			},
+		},
+		options: [
+			{
+				displayName: 'Country',
+				name: 'country',
+				description:
+					'Country for search-type actions, as a two-letter ISO code or a country name. Default us. Not for scrape or similar. Refused with 400 when the named provider cannot apply it.',
+				type: 'string',
+				default: '',
+			},
+		],
 	},
 	{
 		displayName: 'URL',
 		name: 'url',
 		description: 'A full http(s) URL',
-		displayOptions: {
-			show: {
-				resource: ['web_research'],
-			},
-		},
 		type: 'string',
 		default: '',
-	},
-	{
-		displayName: 'Country',
-		name: 'country',
-		description:
-			'Country for search-type actions, as a two-letter ISO code or a country name. Default us. Not for scrape or similar. Refused with 400 when the named provider cannot apply it.',
-		displayOptions: {
-			show: {
-				resource: ['web_research'],
-			},
-		},
-		type: 'string',
-		default: '',
-	},
-	{
-		displayName: 'Platform',
-		name: 'platform',
 		required: true,
+		displayOptions: {
+			show: {
+				resource: ['web_research'],
+				operation: ['scrape', 'similar'],
+			},
+		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['web_research'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Provider',
+				name: 'provider',
+				description:
+					'Data provider: auto (default) or one of serper, serpapi, exa, dataforseo. Name one only when the caller asks for that vendor.',
+				type: 'options',
+				options: [
+					{
+						name: 'Auto (Glasser Picks)',
+						value: 'auto',
+					},
+					{
+						name: 'DataForSEO',
+						value: 'dataforseo',
+					},
+					{
+						name: 'Exa',
+						value: 'exa',
+					},
+					{
+						name: 'SerpApi',
+						value: 'serpapi',
+					},
+					{
+						name: 'Serper',
+						value: 'serper',
+					},
+				],
+				default: 'auto',
+			},
+		],
+	},
+	{
+		displayName: 'Operation',
+		name: 'operation',
+		description:
+			"Default search. search: posts matching query. profile: the account itself — bio, follower counts, links — from handle (reddit: the subreddit; linkedin: URL of a person's profile or a company page). feed: the account's recent posts or videos, from handle (linkedin: URL of a company page). post: one post or video from URL. find: an account's other social profiles, from handle (linkedin: URL of a person's profile; reddit: subreddits matching query). Every platform supports every mode.",
 		displayOptions: {
 			show: {
 				resource: ['social_research'],
@@ -705,6 +917,39 @@ export const properties: INodeProperties[] = [
 		},
 		type: 'options',
 		noDataExpression: true,
+		options: [
+			{
+				name: 'Find Social Profiles',
+				value: 'find',
+				action: 'Find social profiles',
+			},
+			{
+				name: 'One Post',
+				value: 'post',
+				action: 'Get one post',
+			},
+			{
+				name: 'Profile',
+				value: 'profile',
+				action: 'Get a social profile',
+			},
+			{
+				name: 'Recent Posts',
+				value: 'feed',
+				action: 'Get recent posts',
+			},
+			{
+				name: 'Search',
+				value: 'search',
+				action: 'Search social posts',
+			},
+		],
+		default: 'search',
+	},
+	{
+		displayName: 'Platform',
+		name: 'platform',
+		type: 'options',
 		options: [
 			{
 				name: 'Instagram',
@@ -732,118 +977,135 @@ export const properties: INodeProperties[] = [
 			},
 		],
 		default: 'reddit',
-	},
-	{
-		displayName: 'Mode',
-		name: 'mode',
-		description:
-			"Default search. search: posts matching query. profile: the account itself — bio, follower counts, links — from handle (reddit: the subreddit; linkedin: URL of a person's profile or a company page). feed: the account's recent posts or videos, from handle (linkedin: URL of a company page). post: one post or video from URL. find: an account's other social profiles, from handle (linkedin: URL of a person's profile; reddit: subreddits matching query). Every platform supports every mode.",
-		displayOptions: {
-			show: {
-				resource: ['social_research'],
-			},
-		},
-		type: 'options',
+		required: true,
 		noDataExpression: true,
-		options: [
-			{
-				name: 'Find Social Profiles',
-				value: 'find',
-			},
-			{
-				name: 'One Post',
-				value: 'post',
-			},
-			{
-				name: 'Profile',
-				value: 'profile',
-			},
-			{
-				name: 'Recent Posts',
-				value: 'feed',
-			},
-			{
-				name: 'Search',
-				value: 'search',
-			},
-		],
-		default: 'search',
-	},
-	{
-		displayName: 'Provider',
-		name: 'provider',
-		description:
-			'Data provider: auto (default) or one of scrapecreators, apify, tikhub, pdl. Name one only when the caller asks for that vendor.',
 		displayOptions: {
 			show: {
 				resource: ['social_research'],
 			},
 		},
-		type: 'options',
-		options: [
-			{
-				name: 'Apify',
-				value: 'apify',
-			},
-			{
-				name: 'Auto (Glasser Picks)',
-				value: 'auto',
-			},
-			{
-				name: 'People Data Labs',
-				value: 'pdl',
-			},
-			{
-				name: 'ScrapeCreators',
-				value: 'scrapecreators',
-			},
-			{
-				name: 'TikHub',
-				value: 'tikhub',
-			},
-		],
-		default: 'auto',
 	},
 	{
 		displayName: 'Query',
 		name: 'query',
 		description: 'Search phrase or question',
+		type: 'string',
+		default: '',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: ['social_research'],
+				operation: ['search'],
 			},
 		},
-		type: 'string',
-		default: '',
 	},
 	{
 		displayName: 'Handle',
 		name: 'handle',
 		description: 'A username without @, or a subreddit name without r/',
+		type: 'string',
+		default: '',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: ['social_research'],
+				operation: ['profile', 'feed'],
 			},
 		},
-		type: 'string',
-		default: '',
 	},
 	{
 		displayName: 'URL',
 		name: 'url',
 		description: 'A full http(s) URL',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['social_research'],
+				operation: ['post'],
+			},
+		},
+	},
+	{
+		displayName: 'Handle',
+		name: 'handle',
+		description: 'A username without @, or a subreddit name without r/',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['social_research'],
+				operation: ['find'],
+			},
+			hide: {
+				platform: ['reddit'],
+			},
+		},
+	},
+	{
+		displayName: 'Query',
+		name: 'query',
+		description: 'Search phrase or question',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['social_research'],
+				operation: ['find'],
+				platform: ['reddit'],
+			},
+		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['social_research'],
 			},
 		},
-		type: 'string',
-		default: '',
+		options: [
+			{
+				displayName: 'Provider',
+				name: 'provider',
+				description:
+					'Data provider: auto (default) or one of scrapecreators, apify, tikhub, pdl. Name one only when the caller asks for that vendor.',
+				type: 'options',
+				options: [
+					{
+						name: 'Apify',
+						value: 'apify',
+					},
+					{
+						name: 'Auto (Glasser Picks)',
+						value: 'auto',
+					},
+					{
+						name: 'People Data Labs',
+						value: 'pdl',
+					},
+					{
+						name: 'ScrapeCreators',
+						value: 'scrapecreators',
+					},
+					{
+						name: 'TikHub',
+						value: 'tikhub',
+					},
+				],
+				default: 'auto',
+			},
+		],
 	},
 	{
 		displayName: 'Operation',
 		name: 'operation',
-		required: true,
 		description:
 			'Property_value and property_rent take address. property_search, listings_sale and listings_rental take address, or city plus state, or zip. market_stats takes zip. stock_quote takes symbol.',
 		displayOptions: {
@@ -893,90 +1155,170 @@ export const properties: INodeProperties[] = [
 		default: 'property_value',
 	},
 	{
-		displayName: 'Provider',
-		name: 'provider',
-		description:
-			'Data provider: auto (default) or one of rentcast, serpapi. Name one only when the caller asks for that vendor.',
+		displayName: 'Address',
+		name: 'address',
+		description: "US street address, e.g. '5500 Grand Lake Dr, San Antonio, TX 78244'",
+		type: 'string',
+		default: '',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: ['market_data'],
+				operation: ['property_value', 'property_rent'],
 			},
 		},
+	},
+	{
+		displayName: 'Search By',
+		name: 'searchBy',
 		type: 'options',
+		required: true,
+		noDataExpression: true,
+		description: 'How the area or property is identified',
+		displayOptions: {
+			show: {
+				resource: ['market_data'],
+				operation: ['property_search', 'listings_sale', 'listings_rental'],
+			},
+		},
 		options: [
 			{
-				name: 'Auto (Glasser Picks)',
-				value: 'auto',
+				name: 'Address',
+				value: 'address',
 			},
 			{
-				name: 'RentCast',
-				value: 'rentcast',
+				name: 'City and State',
+				value: 'city_state',
 			},
 			{
-				name: 'SerpApi',
-				value: 'serpapi',
+				name: 'ZIP Code',
+				value: 'zip',
 			},
 		],
-		default: 'auto',
+		default: 'address',
 	},
 	{
 		displayName: 'Address',
 		name: 'address',
 		description: "US street address, e.g. '5500 Grand Lake Dr, San Antonio, TX 78244'",
+		type: 'string',
+		default: '',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: ['market_data'],
+				operation: ['property_search', 'listings_sale', 'listings_rental'],
+				searchBy: ['address'],
 			},
 		},
-		type: 'string',
-		default: '',
 	},
 	{
 		displayName: 'City',
 		name: 'city',
 		description: 'US city name; use with state',
+		type: 'string',
+		default: '',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: ['market_data'],
+				operation: ['property_search', 'listings_sale', 'listings_rental'],
+				searchBy: ['city_state'],
 			},
 		},
-		type: 'string',
-		default: '',
 	},
 	{
 		displayName: 'State',
 		name: 'state',
 		description: 'Two-letter US state code, e.g. TX',
+		type: 'string',
+		default: '',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: ['market_data'],
+				operation: ['property_search', 'listings_sale', 'listings_rental'],
+				searchBy: ['city_state'],
 			},
 		},
-		type: 'string',
-		default: '',
 	},
 	{
 		displayName: 'ZIP Code',
 		name: 'zip',
 		description: 'Five-digit US ZIP code',
+		type: 'string',
+		default: '',
+		required: true,
 		displayOptions: {
 			show: {
 				resource: ['market_data'],
+				operation: ['property_search', 'listings_sale', 'listings_rental'],
+				searchBy: ['zip'],
 			},
 		},
+	},
+	{
+		displayName: 'ZIP Code',
+		name: 'zip',
+		description: 'Five-digit US ZIP code',
 		type: 'string',
 		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['market_data'],
+				operation: ['market_stats'],
+			},
+		},
 	},
 	{
 		displayName: 'Symbol',
 		name: 'symbol',
 		description: 'Ticker with exchange, e.g. AAPL:NASDAQ',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['market_data'],
+				operation: ['stock_quote'],
+			},
+		},
+	},
+	{
+		displayName: 'Options',
+		name: 'options',
+		type: 'collection',
+		placeholder: 'Add Option',
+		default: {},
 		displayOptions: {
 			show: {
 				resource: ['market_data'],
 			},
 		},
-		type: 'string',
-		default: '',
+		options: [
+			{
+				displayName: 'Provider',
+				name: 'provider',
+				description:
+					'Data provider: auto (default) or one of rentcast, serpapi. Name one only when the caller asks for that vendor.',
+				type: 'options',
+				options: [
+					{
+						name: 'Auto (Glasser Picks)',
+						value: 'auto',
+					},
+					{
+						name: 'RentCast',
+						value: 'rentcast',
+					},
+					{
+						name: 'SerpApi',
+						value: 'serpapi',
+					},
+				],
+				default: 'auto',
+			},
+		],
 	},
 ];

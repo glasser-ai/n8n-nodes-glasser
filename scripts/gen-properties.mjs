@@ -2,11 +2,14 @@
 // Generate nodes/Glasser/properties.ts from the Glasser OpenAPI document.
 //
 // The contract is the single truth for the node's parameters: field names,
-// types, enums, which are required, the default action, and the description
-// the user (and an AI Agent using the node as a tool) reads all come from the
-// request schema of POST /v1/solutions/gtm/<capability>. This script only
-// adds what n8n needs on top: display names, and which fields each resource
-// shows (the same subset the Dify plugin shows).
+// types, enums, the default action, and the description the user (and an AI
+// Agent using the node as a tool) reads all come from the request schema of
+// POST /v1/solutions/gtm/<capability>. This script adds what n8n needs on
+// top: display names, and the LAYOUT below — which fields each operation
+// shows at the top level as required, which it folds into the Additional
+// Fields / Filters / Options collections, and the two "pick one" selectors
+// (Lookup By, Search By) that stand in for an either/or the contract states
+// in prose and OpenAPI's `required` cannot express.
 //
 // Run at development time, commit the output:
 //
@@ -25,23 +28,126 @@ const OPENAPI_URL = 'https://glasser.ai/docs/openapi.json';
 const SOLUTION = 'gtm';
 const PATH_PREFIX = `/v1/solutions/${SOLUTION}/`;
 
-// ------------------------------------------------------------ resources
+// ------------------------------------------------------------ layout
+//
+// Per resource:
+//   name       the Resource dropdown label
+//   operation  the contract field the Operation dropdown maps to
+//   top        required fields shown for every operation, before the groups
+//   groups     one entry per set of operations that share a layout:
+//     operations  the operations the entry applies to (omit for all)
+//     when/unless show the entry only when / except when another parameter
+//                 has one of the listed values
+//     required    fields at the top level, required
+//     oneOf       a selector: the user picks one choice, the choice's fields
+//                 become the required fields (an either/or in the contract)
+//     filters     fields in a "Filters" collection (search operations)
+//     additional  fields in an "Additional Fields" collection
+//   options    fields in an "Options" collection, shown for every operation
+//
 // Order is the order in the Resource dropdown.
 const RESOURCES = {
-	people_search: { name: 'Person', fields: ['action', 'provider', 'job_titles', 'seniorities', 'locations', 'company_domain', 'full_name', 'email', 'linkedin_url'] },
-	company_intelligence: { name: 'Company', fields: ['action', 'provider', 'domain', 'country'] },
-	seo_research: { name: 'SEO', fields: ['action', 'provider', 'keywords', 'domain', 'country'] },
-	web_research: { name: 'Web Research', fields: ['action', 'provider', 'query', 'url', 'country'] },
-	social_research: { name: 'Social', fields: ['platform', 'mode', 'provider', 'query', 'handle', 'url'] },
-	market_data: { name: 'Market Data', fields: ['action', 'provider', 'address', 'city', 'state', 'zip', 'symbol'] },
+	people_search: {
+		name: 'Person',
+		operation: 'action',
+		groups: [
+			{ operations: ['search'], filters: ['job_titles', 'seniorities', 'locations', 'company_domain'] },
+			{
+				operations: ['enrich'],
+				oneOf: {
+					name: 'lookupBy',
+					displayName: 'Lookup By',
+					description: 'Which identifier the person is looked up by',
+					choices: [
+						{ name: 'LinkedIn URL', value: 'linkedin_url', fields: ['linkedin_url'] },
+						{ name: 'Email', value: 'email', fields: ['email'] },
+						{ name: 'Name and Company', value: 'name_company', fields: ['full_name', 'company_domain'] },
+					],
+				},
+			},
+			{ operations: ['find_email'], required: ['full_name', 'company_domain'] },
+		],
+		options: ['provider'],
+	},
+	company_intelligence: {
+		name: 'Company',
+		operation: 'action',
+		groups: [{ required: ['domain'], additional: ['country'] }],
+		options: ['provider'],
+	},
+	seo_research: {
+		name: 'SEO',
+		operation: 'action',
+		groups: [
+			{ operations: ['keyword_overview', 'keyword_ideas', 'serp'], required: ['keywords'], additional: ['country'] },
+			{
+				operations: ['domain_overview', 'ranked_keywords', 'organic_competitors', 'backlinks_overview', 'backlinks', 'referring_domains', 'domain_rating'],
+				required: ['domain'],
+				additional: ['country'],
+			},
+		],
+		options: ['provider'],
+	},
+	web_research: {
+		name: 'Web Research',
+		operation: 'action',
+		groups: [
+			{ operations: ['search', 'news', 'places', 'scholar', 'shopping', 'images', 'videos', 'answer'], required: ['query'], additional: ['country'] },
+			{ operations: ['scrape', 'similar'], required: ['url'] },
+		],
+		options: ['provider'],
+	},
+	social_research: {
+		name: 'Social',
+		operation: 'mode',
+		top: ['platform'],
+		groups: [
+			{ operations: ['search'], required: ['query'] },
+			{ operations: ['profile', 'feed'], required: ['handle'] },
+			{ operations: ['post'], required: ['url'] },
+			// find: an account's other profiles from its handle; on Reddit, subreddits matching a query.
+			{ operations: ['find'], unless: { platform: ['reddit'] }, required: ['handle'] },
+			{ operations: ['find'], when: { platform: ['reddit'] }, required: ['query'] },
+		],
+		options: ['provider'],
+	},
+	market_data: {
+		name: 'Market Data',
+		operation: 'action',
+		groups: [
+			{ operations: ['property_value', 'property_rent'], required: ['address'] },
+			{
+				operations: ['property_search', 'listings_sale', 'listings_rental'],
+				oneOf: {
+					name: 'searchBy',
+					displayName: 'Search By',
+					description: 'How the area or property is identified',
+					choices: [
+						{ name: 'Address', value: 'address', fields: ['address'] },
+						{ name: 'City and State', value: 'city_state', fields: ['city', 'state'] },
+						{ name: 'ZIP Code', value: 'zip', fields: ['zip'] },
+					],
+				},
+			},
+			{ operations: ['market_stats'], required: ['zip'] },
+			{ operations: ['stock_quote'], required: ['symbol'] },
+		],
+		options: ['provider'],
+	},
+};
+
+const COLLECTIONS = {
+	filters: { displayName: 'Filters', name: 'filters', placeholder: 'Add Filter' },
+	additional: { displayName: 'Additional Fields', name: 'additionalFields', placeholder: 'Add Field' },
+	options: { displayName: 'Options', name: 'options', placeholder: 'Add Option' },
 };
 
 // Display names per field. Text the OpenAPI document does not carry.
 const FIELDS = {
 	action: 'Operation',
+	mode: 'Operation',
 	provider: 'Provider',
 	platform: 'Platform',
-	mode: 'Mode',
 	query: 'Query',
 	url: 'URL',
 	domain: 'Domain',
@@ -108,6 +214,51 @@ const OPTIONS = {
 	listings_sale: 'For-Sale Listings', listings_rental: 'Rental Listings', market_stats: 'ZIP Market Statistics', stock_quote: 'Stock Quote',
 };
 
+/** The verb phrase an AI Agent sees for an operation ("Search people"). */
+const ACTIONS = {
+	'people_search.search': 'Search people',
+	'people_search.enrich': 'Enrich a person',
+	'people_search.find_email': 'Find a work email',
+	'company_intelligence.enrich': 'Enrich a company',
+	'company_intelligence.tech_stack': 'Get the technology stack',
+	'company_intelligence.traffic': 'Get website traffic',
+	'company_intelligence.competitors': 'Get competitors',
+	'company_intelligence.funding': 'Get funding rounds',
+	'company_intelligence.news': 'Get company news',
+	'seo_research.keyword_overview': 'Get keyword metrics',
+	'seo_research.keyword_ideas': 'Get keyword ideas',
+	'seo_research.serp': 'Get search results for a keyword',
+	'seo_research.domain_overview': 'Get a domain organic overview',
+	'seo_research.ranked_keywords': 'Get ranked keywords',
+	'seo_research.organic_competitors': 'Get organic search competitors',
+	'seo_research.backlinks_overview': 'Get backlink totals',
+	'seo_research.backlinks': 'List backlinks',
+	'seo_research.referring_domains': 'List referring domains',
+	'seo_research.domain_rating': 'Get domain rating',
+	'web_research.search': 'Search the web',
+	'web_research.news': 'Search news',
+	'web_research.places': 'Search places',
+	'web_research.scholar': 'Search academic papers',
+	'web_research.shopping': 'Search shopping',
+	'web_research.images': 'Search images',
+	'web_research.videos': 'Search videos',
+	'web_research.answer': 'Answer a question from the web',
+	'web_research.scrape': 'Read a web page',
+	'web_research.similar': 'Find similar pages',
+	'social_research.search': 'Search social posts',
+	'social_research.profile': 'Get a social profile',
+	'social_research.feed': 'Get recent posts',
+	'social_research.post': 'Get one post',
+	'social_research.find': 'Find social profiles',
+	'market_data.property_value': 'Estimate a property value',
+	'market_data.property_rent': 'Estimate rent',
+	'market_data.property_search': 'Search property records',
+	'market_data.listings_sale': 'List listings for sale',
+	'market_data.listings_rental': 'List rental listings',
+	'market_data.market_stats': 'Get ZIP market statistics',
+	'market_data.stock_quote': 'Get a stock quote',
+};
+
 // ---------------------------------------------------------- generation
 
 async function loadOpenapi(source) {
@@ -172,72 +323,31 @@ function sentenceCase(text) {
 		.join(' ');
 }
 
-/** The verb phrase an AI Agent sees for an operation ("Search people"). */
-const ACTIONS = {
-	'people_search.search': 'Search people',
-	'people_search.enrich': 'Enrich a person',
-	'people_search.find_email': 'Find a work email',
-	'company_intelligence.enrich': 'Enrich a company',
-	'company_intelligence.tech_stack': 'Get the technology stack',
-	'company_intelligence.traffic': 'Get website traffic',
-	'company_intelligence.competitors': 'Get competitors',
-	'company_intelligence.funding': 'Get funding rounds',
-	'company_intelligence.news': 'Get company news',
-	'seo_research.keyword_overview': 'Get keyword metrics',
-	'seo_research.keyword_ideas': 'Get keyword ideas',
-	'seo_research.serp': 'Get search results for a keyword',
-	'seo_research.domain_overview': 'Get a domain organic overview',
-	'seo_research.ranked_keywords': 'Get ranked keywords',
-	'seo_research.organic_competitors': 'Get organic search competitors',
-	'seo_research.backlinks_overview': 'Get backlink totals',
-	'seo_research.backlinks': 'List backlinks',
-	'seo_research.referring_domains': 'List referring domains',
-	'seo_research.domain_rating': 'Get domain rating',
-	'web_research.search': 'Search the web',
-	'web_research.news': 'Search news',
-	'web_research.places': 'Search places',
-	'web_research.scholar': 'Search academic papers',
-	'web_research.shopping': 'Search shopping',
-	'web_research.images': 'Search images',
-	'web_research.videos': 'Search videos',
-	'web_research.answer': 'Answer a question from the web',
-	'web_research.scrape': 'Read a web page',
-	'web_research.similar': 'Find similar pages',
-	'market_data.property_value': 'Estimate a property value',
-	'market_data.property_rent': 'Estimate rent',
-	'market_data.property_search': 'Search property records',
-	'market_data.listings_sale': 'List listings for sale',
-	'market_data.listings_rental': 'List rental listings',
-	'market_data.market_stats': 'Get ZIP market statistics',
-	'market_data.stock_quote': 'Get a stock quote',
-};
+function byName(a, b) {
+	return a.name.localeCompare(b.name);
+}
 
-function buildProperty(resource, name, prop, required) {
+function byDisplayName(a, b) {
+	return a.displayName.localeCompare(b.displayName);
+}
+
+/** A field as n8n shows it, from its request schema. No displayOptions: the caller places it. */
+function buildField(resource, name, prop) {
 	const schema = unwrap(prop);
 	const displayName = FIELDS[name];
 	if (!displayName) throw new Error(`${resource}.${name}: no display name in FIELDS; add one`);
 	const raw = schema.description ?? FIELD_DESCRIPTIONS[`${resource}.${name}`] ?? FIELD_DESCRIPTIONS[name];
 	const description = raw === undefined ? undefined : describe(raw);
 	const dropdownDescription = raw === undefined ? undefined : describe(withoutEnumList(raw));
-	const base = { displayName, name, required: required || undefined, description, displayOptions: { show: { resource: [resource] } } };
+	const base = { displayName, name, description };
 
 	if (schema.enum) {
-		const isOperation = name === 'action';
-		const options = schema.enum
-			.map((value) => ({
-				name: label(value),
-				value,
-				...(isOperation ? { action: ACTIONS[`${resource}.${value}`] ?? sentenceCase(label(value)) } : {}),
-			}))
-			.sort((a, b) => a.name.localeCompare(b.name));
 		const fallback = defaultOf(schema, resource, name) ?? (name === 'provider' ? 'auto' : schema.enum[0]);
 		return {
 			...base,
 			description: dropdownDescription,
-			name: isOperation ? 'operation' : name,
 			type: 'options',
-			noDataExpression: isOperation || name === 'platform' || name === 'mode' || undefined,
-			options,
+			options: schema.enum.map((value) => ({ name: label(value), value })).sort(byName),
 			default: fallback,
 		};
 	}
@@ -248,7 +358,7 @@ function buildProperty(resource, name, prop, required) {
 				...base,
 				description: dropdownDescription,
 				type: 'multiOptions',
-				options: items.enum.map((value) => ({ name: label(value), value })).sort((a, b) => a.name.localeCompare(b.name)),
+				options: items.enum.map((value) => ({ name: label(value), value })).sort(byName),
 				default: [],
 			};
 		}
@@ -264,6 +374,62 @@ function buildProperty(resource, name, prop, required) {
 		};
 	}
 	return { ...base, type: 'string', default: '', ...(name === 'email' ? { placeholder: 'name@email.com' } : {}) };
+}
+
+/** The Operation dropdown: the contract's action (or mode) enum, with the verb an AI Agent reads. */
+function buildOperation(resource, field, prop) {
+	const schema = unwrap(prop);
+	const raw = schema.description;
+	const options = schema.enum
+		.map((value) => ({ name: label(value), value, action: ACTIONS[`${resource}.${value}`] ?? sentenceCase(label(value)) }))
+		.sort(byName);
+	return {
+		displayName: 'Operation',
+		name: 'operation',
+		...(raw === undefined ? {} : { description: describe(withoutEnumList(raw)) }),
+		displayOptions: { show: { resource: [resource] } },
+		type: 'options',
+		noDataExpression: true,
+		options,
+		default: defaultOf(schema, resource, field) ?? schema.enum[0],
+	};
+}
+
+/** The displayOptions of everything inside a group: resource, operations, and the when/unless rules. */
+function groupDisplay(resource, group, extra = {}) {
+	const show = { resource: [resource] };
+	if (group.operations) show.operation = group.operations;
+	Object.assign(show, group.when ?? {}, extra);
+	const display = { show };
+	if (group.unless) display.hide = group.unless;
+	return display;
+}
+
+function buildCollection(kind, fields, display) {
+	const { displayName, name, placeholder } = COLLECTIONS[kind];
+	return {
+		displayName,
+		name,
+		type: 'collection',
+		placeholder,
+		default: {},
+		displayOptions: display,
+		options: fields.sort(byDisplayName),
+	};
+}
+
+function buildSelector(oneOf, display) {
+	return {
+		displayName: oneOf.displayName,
+		name: oneOf.name,
+		type: 'options',
+		required: true,
+		noDataExpression: true,
+		description: oneOf.description,
+		displayOptions: display,
+		options: oneOf.choices.map(({ name, value }) => ({ name, value })).sort(byName),
+		default: oneOf.choices[0].value,
+	};
 }
 
 function serialize(value, indent = '') {
@@ -292,25 +458,82 @@ async function main(source) {
 			noDataExpression: true,
 			options: Object.entries(RESOURCES)
 				.map(([value, r]) => ({ name: r.name, value }))
-				.sort((a, b) => a.name.localeCompare(b.name)),
+				.sort(byName),
 			default: 'people_search',
 		},
 	];
 	const meta = {};
+	const nodeOnly = new Set();
+
 	for (const [resource, spec] of Object.entries(RESOURCES)) {
 		const schema = tools[resource].requestBody.content['application/json'].schema;
-		const required = new Set(schema.required ?? []);
-		const missing = spec.fields.filter((f) => !(f in schema.properties));
-		if (missing.length) throw new Error(`${resource}: fields ${missing} are not in the request schema`);
-		for (const r of required) if (!spec.fields.includes(r)) throw new Error(`${resource}: required field ${r} is not listed`);
-		const lists = [];
-		for (const name of spec.fields) {
+		const field = (name) => {
 			const prop = schema.properties[name];
-			properties.push(buildProperty(resource, name, prop, required.has(name)));
-			const s = unwrap(prop);
-			if (s.type === 'array' && !(s.items ?? {}).enum) lists.push(name);
+			if (!prop) throw new Error(`${resource}: field ${name} is not in the request schema`);
+			return buildField(resource, name, prop);
+		};
+		const operationSchema = unwrap(schema.properties[spec.operation]);
+		const operations = operationSchema.enum;
+		const covered = new Set();
+		const lists = [];
+		const use = (name) => {
+			const s = unwrap(schema.properties[name]);
+			if (s.type === 'array' && !(s.items ?? {}).enum && !lists.includes(name)) lists.push(name);
+		};
+
+		properties.push(buildOperation(resource, spec.operation, schema.properties[spec.operation]));
+		for (const name of spec.top ?? []) {
+			use(name);
+			properties.push({ ...field(name), required: true, noDataExpression: true, displayOptions: { show: { resource: [resource] } } });
 		}
-		meta[resource] = { lists, hasOperation: spec.fields.includes('action') };
+
+		for (const group of spec.groups) {
+			for (const op of group.operations ?? operations) {
+				if (!operations.includes(op)) throw new Error(`${resource}: operation ${op} is not in ${operations}`);
+				covered.add(op);
+			}
+			for (const name of group.required ?? []) {
+				use(name);
+				properties.push({ ...field(name), required: true, displayOptions: groupDisplay(resource, group) });
+			}
+			if (group.oneOf) {
+				nodeOnly.add(group.oneOf.name);
+				properties.push(buildSelector(group.oneOf, groupDisplay(resource, group)));
+				for (const choice of group.oneOf.choices) {
+					for (const name of choice.fields) {
+						use(name);
+						properties.push({
+							...field(name),
+							required: true,
+							displayOptions: groupDisplay(resource, group, { [group.oneOf.name]: [choice.value] }),
+						});
+					}
+				}
+			}
+			for (const kind of ['filters', 'additional']) {
+				if (!group[kind]) continue;
+				group[kind].forEach(use);
+				properties.push(buildCollection(kind, group[kind].map(field), groupDisplay(resource, group)));
+			}
+		}
+		if (spec.options) {
+			spec.options.forEach(use);
+			properties.push(buildCollection('options', spec.options.map(field), { show: { resource: [resource] } }));
+		}
+
+		const uncovered = operations.filter((op) => !covered.has(op));
+		if (uncovered.length) throw new Error(`${resource}: operations ${uncovered} have no layout group`);
+		// What the contract requires on every call must be required on every operation here too.
+		for (const r of schema.required ?? []) {
+			if (r === spec.operation || (spec.top ?? []).includes(r)) continue;
+			for (const op of operations) {
+				const groups = spec.groups.filter((g) => !g.operations || g.operations.includes(op));
+				if (!groups.some((g) => (g.required ?? []).includes(r))) {
+					throw new Error(`${resource}.${op}: the contract requires ${r}; it is not a required field of the operation`);
+				}
+			}
+		}
+		meta[resource] = { operation: spec.operation, lists };
 	}
 
 	const out = `// Generated by scripts/gen-properties.mjs from the Glasser OpenAPI document. Do not edit.
@@ -319,8 +542,11 @@ import type { INodeProperties } from 'n8n-workflow';
 /** Solution the node calls: POST /v1/solutions/${SOLUTION}/<resource>. */
 export const SOLUTION = '${SOLUTION}';
 
-/** Per resource: which string fields the API takes as arrays (the node splits commas). */
-export const RESOURCE_META: Record<string, { lists: string[]; hasOperation: boolean }> = ${serialize(meta)};
+/** Per resource: the contract field the Operation dropdown maps to, and which string fields the API takes as arrays (the node splits commas). */
+export const RESOURCE_META: Record<string, { operation: string; lists: string[] }> = ${serialize(meta)};
+
+/** Parameters that only shape the form (which fields to show) and are never sent to the API. */
+export const NODE_ONLY: ReadonlySet<string> = new Set(${serialize([...nodeOnly])});
 
 export const properties: INodeProperties[] = ${serialize(properties)};
 `;
