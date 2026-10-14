@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.1
+
+- Poll a Solution call through its `result_url`. Glasser now returns a normalized Solution response for every resource except Person (fixed `output` fields whichever provider served the call, `result_status`, the chain-total `charge_usd`, `runs`). An in-flight call used to be polled at `GET /v1/runs/{id}`, which returns the native run, so a workflow saw one shape when the call finished within the request and another when it had to wait. The node now follows the `result_url` the response carries, on the API origin only and after checking its path, and keeps `GET /v1/runs/{id}` for a response without one.
+- Send the `User-Agent` on the polling requests too.
+- No parameter changes; a 0.2.0 workflow keeps working.
+
 ## 0.2.0
 
 The node's form is laid out the way n8n's UX guidelines ask, which the n8n Cloud manual review required: only an operation's required inputs sit at the top level, everything optional is folded into a collection. Parameter paths changed, so a workflow built on 0.1.x has to have its Glasser nodes configured again.

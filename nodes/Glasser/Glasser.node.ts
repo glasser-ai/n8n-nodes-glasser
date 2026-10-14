@@ -147,10 +147,21 @@ function isShown(this: IExecuteFunctions, property: INodeProperties, itemIndex: 
 const USER_AGENT = `n8n-nodes-glasser/${version} (+https://github.com/glasser-ai/n8n-nodes-glasser)`;
 
 /**
- * POST the solution call and, when the run is still in flight, poll
- * GET /v1/runs/{id} until it is terminal or the budget is spent. The
- * Idempotency-Key is generated once per call, so a transport retry inside
- * n8n's request helper reads the original run instead of paying twice.
+ * The API-origin path of a Solution result read, as the API returns it in
+ * `result_url`: /v1/solutions/gtm/<capability>/result?token=<signed context>.
+ * Anything else is not followed; the node falls back to the native run.
+ */
+const RESULT_PATH = /^\/v1\/solutions\/gtm\/[a-z_]+\/result\?token=[A-Za-z0-9_.%-]+$/;
+
+/**
+ * POST the solution call and, when the run is still in flight, poll until
+ * it is terminal or the budget is spent. A normalized Solution response
+ * carries `result_url`; polling it keeps the same shape (normalized
+ * `output`, `result_status`, the chain-total `charge_usd`, `runs`) as the
+ * terminal response. A response without it is a native run, polled at
+ * GET /v1/runs/{id}. The Idempotency-Key is generated once per call, so a
+ * transport retry inside n8n's request helper reads the original run
+ * instead of paying twice.
  */
 async function callSolution(
 	this: IExecuteFunctions,
@@ -173,9 +184,17 @@ async function callSolution(
 	const deadline = Date.now() + WAIT_BUDGET_MS;
 	while (!TERMINAL.has(String(run.status)) && Date.now() < deadline) {
 		await sleep(POLL_MS);
+		const resultPath = run.result_url;
+		if (resultPath !== undefined && (typeof resultPath !== 'string' || !RESULT_PATH.test(resultPath))) {
+			throw new NodeApiError(this.getNode(), {}, { message: 'Invalid Solution result_url' });
+		}
 		run = await send.call(this, {
 			method: 'GET',
-			url: `${BASE_URL}/v1/runs/${encodeURIComponent(String(run.id))}`,
+			url:
+				typeof resultPath === 'string'
+					? `${BASE_URL}${resultPath}`
+					: `${BASE_URL}/v1/runs/${encodeURIComponent(String(run.id))}`,
+			headers: { 'User-Agent': USER_AGENT },
 			json: true,
 		});
 	}
