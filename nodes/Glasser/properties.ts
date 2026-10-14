@@ -16,7 +16,7 @@ export const RESOURCE_META: Record<string, { operation: string; lists: string[] 
 	},
 	seo_research: {
 		operation: 'action',
-		lists: ['keywords'],
+		lists: ['keywords', 'competitors'],
 	},
 	web_research: {
 		operation: 'action',
@@ -73,7 +73,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		description:
-			'Default search. search: people matching job_titles, seniorities, locations, company_domain or keywords (at least one); a filter is never silently dropped — under auto a Provider that cannot apply one of the given filters is skipped, a named Provider that cannot is refused with 400. enrich: one person from linkedin_url, email, or full_name plus company_domain. find_email: the work email of full_name at company_domain.',
+			'Default: search. search: supply at least one of job_titles, seniorities, locations, company_domain, or keywords. enrich: supply linkedin_url, email, or full_name plus company_domain. find_email: supply full_name and company_domain. Filters are never silently dropped. With auto, Providers that cannot apply them are skipped; a named Provider that cannot apply them returns 400.',
 		displayOptions: {
 			show: {
 				resource: ['people_search'],
@@ -124,14 +124,14 @@ export const properties: INodeProperties[] = [
 			{
 				displayName: 'Job Titles',
 				name: 'job_titles',
-				description: "Job titles, e.g. 'CTO, VP Engineering'.. Comma-separated, up to 20.",
+				description: "Job titles, e.g. 'CTO, VP Engineering'. Comma-separated, up to 20.",
 				type: 'string',
 				default: '',
 			},
 			{
 				displayName: 'Locations',
 				name: 'locations',
-				description: 'Cities, states or countries.. Comma-separated, up to 20.',
+				description: 'Cities, states or countries. Comma-separated, up to 20.',
 				type: 'string',
 				default: '',
 			},
@@ -327,7 +327,7 @@ export const properties: INodeProperties[] = [
 				displayName: 'Provider',
 				name: 'provider',
 				description:
-					'Data provider: auto (default) or one of apollo, pdl, leadmagic, zoominfo, hunter, prospeo. Name one only when the caller asks for that vendor.',
+					"Default auto: select the first eligible Provider in Glasser's preference order. A named Provider must support the request and be allowed by your Key; it does not fall back to another Provider. Available values are listed below.",
 				type: 'options',
 				options: [
 					{
@@ -367,7 +367,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		description:
-			'Default enrich. enrich: profile and firmographics; tech_stack; traffic; competitors: businesses similar to the company (for the domains it competes with in Google results use seo_research organic_competitors); funding; news. All take domain.',
+			'Default: enrich. All actions require domain. enrich: company profile and firmographics. tech_stack, traffic, funding, news: the corresponding company data. competitors: similar businesses. For competing domains in Google results, use SEO research with organic_competitors.',
 		displayOptions: {
 			show: {
 				resource: ['company_intelligence'],
@@ -461,7 +461,7 @@ export const properties: INodeProperties[] = [
 				displayName: 'Provider',
 				name: 'provider',
 				description:
-					'Data provider: auto (default) or one of apollo, pdl, hunter, prospeo, predictleads, leadmagic, builtwith, dataforseo, ahrefs, apify, exa, serper. Name one only when the caller asks for that vendor.',
+					"Default auto: select the first eligible Provider in Glasser's preference order. A named Provider must support the request and be allowed by your Key; it does not fall back to another Provider. Available values are listed below.",
 				type: 'options',
 				options: [
 					{
@@ -525,7 +525,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		description:
-			'Default keyword_overview. keyword_overview takes keywords (several at once); keyword_ideas and serp take exactly one keyword in keywords; domain_overview, ranked_keywords, organic_competitors (domains ranking for the same keywords), backlinks_overview, backlinks, referring_domains and domain_rating take domain.',
+			"Default: keyword_overview. keyword_overview: supply one or more keywords. keyword_ideas or serp: supply exactly one keyword in keywords. site_audit: supply domain; limit is the number of pages to crawl (default 20, at most 100). The crawl runs asynchronously. keyword_gap and backlink_gap: supply domain and one to four competitors. page_audit: supply URL (one page). visibility_history: supply domain; limit is the number of months (default 12, at most 24). All other actions: supply domain. organic_competitors finds domains ranking for the same keywords; ai_visibility counts how often AI answers cite the domain; ai_citations lists the domain's pages that AI answers cite.",
 		displayOptions: {
 			show: {
 				resource: ['seo_research'],
@@ -534,6 +534,21 @@ export const properties: INodeProperties[] = [
 		type: 'options',
 		noDataExpression: true,
 		options: [
+			{
+				name: 'AI Citations',
+				value: 'ai_citations',
+				action: 'List AI citations',
+			},
+			{
+				name: 'AI Visibility',
+				value: 'ai_visibility',
+				action: 'Get AI visibility',
+			},
+			{
+				name: 'Backlink Gap',
+				value: 'backlink_gap',
+				action: 'Get the backlink gap',
+			},
 			{
 				name: 'Backlink Totals',
 				value: 'backlinks_overview',
@@ -560,6 +575,11 @@ export const properties: INodeProperties[] = [
 				action: 'Get search results for a keyword',
 			},
 			{
+				name: 'Keyword Gap',
+				value: 'keyword_gap',
+				action: 'Get the keyword gap',
+			},
+			{
 				name: 'Keyword Ideas',
 				value: 'keyword_ideas',
 				action: 'Get keyword ideas',
@@ -575,6 +595,11 @@ export const properties: INodeProperties[] = [
 				action: 'Get organic search competitors',
 			},
 			{
+				name: 'Page Audit',
+				value: 'page_audit',
+				action: 'Audit a page',
+			},
+			{
 				name: 'Ranked Keywords',
 				value: 'ranked_keywords',
 				action: 'Get ranked keywords',
@@ -584,13 +609,23 @@ export const properties: INodeProperties[] = [
 				value: 'referring_domains',
 				action: 'List referring domains',
 			},
+			{
+				name: 'Site Audit',
+				value: 'site_audit',
+				action: 'Audit a site',
+			},
+			{
+				name: 'Visibility History',
+				value: 'visibility_history',
+				action: 'Get visibility history',
+			},
 		],
 		default: 'keyword_overview',
 	},
 	{
 		displayName: 'Keywords',
 		name: 'keywords',
-		description: "Keywords to look up, e.g. 'espresso machine'.. Comma-separated, up to 20.",
+		description: "Keywords to look up, e.g. 'espresso machine'. Comma-separated, up to 20.",
 		type: 'string',
 		default: '',
 		required: true,
@@ -621,6 +656,17 @@ export const properties: INodeProperties[] = [
 					'Country as a two-letter ISO code or a country name, e.g. us, gb, de, Germany. Default us. An unsupported country is refused with the supported list.',
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				description: 'Max number of results to return',
+				type: 'number',
+				default: 50,
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
 			},
 		],
 	},
@@ -643,6 +689,10 @@ export const properties: INodeProperties[] = [
 					'backlinks',
 					'referring_domains',
 					'domain_rating',
+					'site_audit',
+					'ai_visibility',
+					'ai_citations',
+					'visibility_history',
 				],
 			},
 		},
@@ -664,6 +714,10 @@ export const properties: INodeProperties[] = [
 					'backlinks',
 					'referring_domains',
 					'domain_rating',
+					'site_audit',
+					'ai_visibility',
+					'ai_citations',
+					'visibility_history',
 				],
 			},
 		},
@@ -676,7 +730,97 @@ export const properties: INodeProperties[] = [
 				type: 'string',
 				default: '',
 			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				description: 'Max number of results to return',
+				type: 'number',
+				default: 50,
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+			},
 		],
+	},
+	{
+		displayName: 'Domain',
+		name: 'domain',
+		description:
+			'A website domain such as stripe.com. A full URL is accepted and reduced to its host.',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['seo_research'],
+				operation: ['keyword_gap', 'backlink_gap'],
+			},
+		},
+	},
+	{
+		displayName: 'Competitors',
+		name: 'competitors',
+		description:
+			'Competitor domains for keyword_gap and backlink_gap, one to four. Full URLs are reduced to their host. Comma-separated, up to 4.',
+		type: 'string',
+		default: '',
+		placeholder: 'shopify.com, squarespace.com',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['seo_research'],
+				operation: ['keyword_gap', 'backlink_gap'],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['seo_research'],
+				operation: ['keyword_gap', 'backlink_gap'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Country',
+				name: 'country',
+				description:
+					'Country as a two-letter ISO code or a country name, e.g. us, gb, de, Germany. Default us. An unsupported country is refused with the supported list.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				description: 'Max number of results to return',
+				type: 'number',
+				default: 50,
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+			},
+		],
+	},
+	{
+		displayName: 'URL',
+		name: 'url',
+		description: 'One page URL for page_audit, such as https://stripe.com/pricing',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['seo_research'],
+				operation: ['page_audit'],
+			},
+		},
 	},
 	{
 		displayName: 'Options',
@@ -694,7 +838,7 @@ export const properties: INodeProperties[] = [
 				displayName: 'Provider',
 				name: 'provider',
 				description:
-					'Data provider: auto (default) or one of semrush, serpstat, dataforseo, ahrefs, serper. Name one only when the caller asks for that vendor.',
+					"Default auto: select the first eligible Provider in Glasser's preference order. A named Provider must support the request and be allowed by your Key; it does not fall back to another Provider. Available values are listed below.",
 				type: 'options',
 				options: [
 					{
@@ -730,7 +874,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		description:
-			'Default search. search, news, places, scholar, shopping, images, videos and answer take query; scrape and similar take URL.',
+			'Default: search. Supply query for search, news, places, scholar, shopping, images, videos, or answer. Supply URL for scrape or similar.',
 		displayOptions: {
 			show: {
 				resource: ['web_research'],
@@ -802,16 +946,7 @@ export const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['web_research'],
-				operation: [
-					'search',
-					'news',
-					'places',
-					'scholar',
-					'shopping',
-					'images',
-					'videos',
-					'answer',
-				],
+				operation: ['search'],
 			},
 		},
 	},
@@ -824,16 +959,7 @@ export const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['web_research'],
-				operation: [
-					'search',
-					'news',
-					'places',
-					'scholar',
-					'shopping',
-					'images',
-					'videos',
-					'answer',
-				],
+				operation: ['search'],
 			},
 		},
 		options: [
@@ -844,6 +970,107 @@ export const properties: INodeProperties[] = [
 					'Country for search-type actions, as a two-letter ISO code or a country name. Default us. Not for scrape or similar. Refused with 400 when the named provider cannot apply it.',
 				type: 'string',
 				default: '',
+			},
+			{
+				displayName: 'Language',
+				name: 'language',
+				description:
+					'Language for search-type actions, two letters such as en, de. Not for scrape or similar.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				description: 'Max number of results to return',
+				type: 'number',
+				default: 50,
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+			},
+			{
+				displayName: 'Time Range',
+				name: 'time_range',
+				description:
+					"For search only: restrict results to the past day, week, month, or year using Google's time filter. Omit for any time. Auto uses only Providers that support this filter (Serper and SerpApi). Exa is refused when this field is supplied. This is a search-engine filter, not a verified publication date.",
+				type: 'options',
+				options: [
+					{
+						name: 'Day',
+						value: 'day',
+					},
+					{
+						name: 'Month',
+						value: 'month',
+					},
+					{
+						name: 'Week',
+						value: 'week',
+					},
+					{
+						name: 'Year',
+						value: 'year',
+					},
+				],
+				default: 'day',
+			},
+		],
+	},
+	{
+		displayName: 'Query',
+		name: 'query',
+		description: 'Search phrase or question',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['web_research'],
+				operation: ['news', 'places', 'scholar', 'shopping', 'images', 'videos', 'answer'],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['web_research'],
+				operation: ['news', 'places', 'scholar', 'shopping', 'images', 'videos', 'answer'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Country',
+				name: 'country',
+				description:
+					'Country for search-type actions, as a two-letter ISO code or a country name. Default us. Not for scrape or similar. Refused with 400 when the named provider cannot apply it.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Language',
+				name: 'language',
+				description:
+					'Language for search-type actions, two letters such as en, de. Not for scrape or similar.',
+				type: 'string',
+				default: '',
+			},
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				description: 'Max number of results to return',
+				type: 'number',
+				default: 50,
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
 			},
 		],
 	},
@@ -857,9 +1084,123 @@ export const properties: INodeProperties[] = [
 		displayOptions: {
 			show: {
 				resource: ['web_research'],
-				operation: ['scrape', 'similar'],
+				operation: ['scrape'],
 			},
 		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['web_research'],
+				operation: ['scrape'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Cache Max Age (Seconds)',
+				name: 'cache_max_age_seconds',
+				description:
+					'For scrape only. Maximum Provider cache age; 0 requires a live fetch. Routes without this control are excluded. Auto selects Firecrawl (milliseconds); explicit Exa receives whole hours rounded down. Unknown cache/fetch metadata remains null.',
+				type: 'number',
+				default: 0,
+				typeOptions: {
+					minValue: 0,
+					maxValue: 2592000,
+				},
+			},
+			{
+				displayName: 'Formats',
+				name: 'formats',
+				description:
+					"For scrape only. When omitted, use the selected Provider's native default: text for Serper/Exa, markdown for Firecrawl/DataForSEO. Requested formats guide routing and fallback; output exposes fixed text/markdown/html/raw_html fields. html means cleaned HTML; raw_html means original HTML. Auto uses Serper then Firecrawl. HTML requests go directly to Firecrawl. Read result_status and missing_formats for delivery; an unrequested null field is not a partial result. Firecrawl does not supply text; Glasser does not convert HTML to text. X/Twitter and enrichment routes are excluded from Firecrawl.",
+				type: 'multiOptions',
+				options: [
+					{
+						name: 'HTML',
+						value: 'html',
+					},
+					{
+						name: 'Markdown',
+						value: 'markdown',
+					},
+					{
+						name: 'Raw HTML',
+						value: 'raw_html',
+					},
+					{
+						name: 'Text',
+						value: 'text',
+					},
+				],
+				default: [],
+			},
+			{
+				displayName: 'Max Charge (USD)',
+				name: 'max_charge_usd',
+				description:
+					'For scrape only. Maximum total Charge for Runs in this request, including replayed Runs. Before a new Run, settled Charges plus its maximum Charge must fit. An unsettled Run stops fallback. Omit for no caller cap; 0.00 allows no new paid Runs.',
+				type: 'string',
+				default: '',
+				placeholder: '0.50',
+			},
+			{
+				displayName: 'Timeout (Ms)',
+				name: 'timeout_ms',
+				description:
+					'For scrape only. Default 30000. Execution budget for this API request, including serial fallback. A retry has a new request window and reuses existing Runs through Run idempotency. Firecrawl and Exa use the actual remaining time, reserving settlement and response time; less than 1 second of call time is refused.',
+				type: 'number',
+				default: 30000,
+				typeOptions: {
+					minValue: 1000,
+					maxValue: 120000,
+				},
+			},
+		],
+	},
+	{
+		displayName: 'URL',
+		name: 'url',
+		description: 'A full http(s) URL',
+		type: 'string',
+		default: '',
+		required: true,
+		displayOptions: {
+			show: {
+				resource: ['web_research'],
+				operation: ['similar'],
+			},
+		},
+	},
+	{
+		displayName: 'Additional Fields',
+		name: 'additionalFields',
+		type: 'collection',
+		placeholder: 'Add Field',
+		default: {},
+		displayOptions: {
+			show: {
+				resource: ['web_research'],
+				operation: ['similar'],
+			},
+		},
+		options: [
+			{
+				displayName: 'Limit',
+				name: 'limit',
+				description: 'Max number of results to return',
+				type: 'number',
+				default: 50,
+				typeOptions: {
+					minValue: 1,
+					maxValue: 100,
+				},
+			},
+		],
 	},
 	{
 		displayName: 'Options',
@@ -877,7 +1218,7 @@ export const properties: INodeProperties[] = [
 				displayName: 'Provider',
 				name: 'provider',
 				description:
-					'Data provider: auto (default) or one of serper, serpapi, exa, dataforseo. Name one only when the caller asks for that vendor.',
+					"Default auto: select the first eligible Provider in Glasser's preference order. A named Provider must support the request and be allowed by your Key; it does not fall back to another Provider. Available values are listed below.",
 				type: 'options',
 				options: [
 					{
@@ -891,6 +1232,10 @@ export const properties: INodeProperties[] = [
 					{
 						name: 'Exa',
 						value: 'exa',
+					},
+					{
+						name: 'Firecrawl',
+						value: 'firecrawl',
 					},
 					{
 						name: 'SerpApi',
@@ -909,7 +1254,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		description:
-			"Default search. search: posts matching query. profile: the account itself — bio, follower counts, links — from handle (reddit: the subreddit; linkedin: URL of a person's profile or a company page). feed: the account's recent posts or videos, from handle (linkedin: URL of a company page). post: one post or video from URL. find: an account's other social profiles, from handle (linkedin: URL of a person's profile; reddit: subreddits matching query). Every platform supports every mode.",
+			"Default: search. Every platform supports each mode. search: posts matching query. profile: account details from handle (Reddit: subreddit). For LinkedIn, supply a person or company URL. feed: recent posts or videos from handle. For LinkedIn, supply a company URL. post: one post or video from URL. find: other social profiles from handle. For LinkedIn, supply a person's profile URL; for Reddit, supply query to find subreddits.",
 		displayOptions: {
 			show: {
 				resource: ['social_research'],
@@ -1075,7 +1420,7 @@ export const properties: INodeProperties[] = [
 				displayName: 'Provider',
 				name: 'provider',
 				description:
-					'Data provider: auto (default) or one of scrapecreators, apify, tikhub, pdl. Name one only when the caller asks for that vendor.',
+					"Default auto: select the first eligible Provider in Glasser's preference order. A named Provider must support the request and be allowed by your Key; it does not fall back to another Provider. Available values are listed below.",
 				type: 'options',
 				options: [
 					{
@@ -1107,7 +1452,7 @@ export const properties: INodeProperties[] = [
 		displayName: 'Operation',
 		name: 'operation',
 		description:
-			'Property_value and property_rent take address. property_search, listings_sale and listings_rental take address, or city plus state, or zip. market_stats takes zip. stock_quote takes symbol.',
+			'Choose the data to retrieve: property_value or property_rent: supply address. property_search, listings_sale, or listings_rental: supply address, city plus state, or zip. market_stats: supply zip. stock_quote: supply symbol.',
 		displayOptions: {
 			show: {
 				resource: ['market_data'],
@@ -1301,7 +1646,7 @@ export const properties: INodeProperties[] = [
 				displayName: 'Provider',
 				name: 'provider',
 				description:
-					'Data provider: auto (default) or one of rentcast, serpapi. Name one only when the caller asks for that vendor.',
+					"Default auto: select the first eligible Provider in Glasser's preference order. A named Provider must support the request and be allowed by your Key; it does not fall back to another Provider. Available values are listed below.",
 				type: 'options',
 				options: [
 					{

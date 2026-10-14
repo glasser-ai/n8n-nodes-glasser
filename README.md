@@ -10,12 +10,12 @@ One node, one credential. `usableAsTool` is on, so the same node works as a step
 |---|---|---|
 | **Person** | Search people, Enrich a person, Find a work email | Apollo, People Data Labs, LeadMagic, ZoomInfo, Hunter, Prospeo |
 | **Company** | Enrich, Technology stack, Website traffic, Competitors, Funding rounds, News | Apollo, PDL, Hunter, Prospeo, PredictLeads, LeadMagic, BuiltWith, DataForSEO, Ahrefs, Apify, Exa, Serper |
-| **SEO** | Keyword metrics, Keyword ideas, Search results for a keyword, Domain organic overview, Ranked keywords, Organic search competitors, Backlink totals, Backlinks, Referring domains, Domain rating | Semrush, Serpstat, DataForSEO, Ahrefs, Serper |
-| **Web Research** | Search the web, News, Places, Academic papers, Shopping, Images, Videos, Answer from the web, Read a web page, Similar pages | Serper, SerpApi, Exa, DataForSEO |
+| **SEO** | Keyword metrics, Keyword ideas, Search results for a keyword, Domain organic overview, Ranked keywords, Organic search competitors, Backlink totals, Backlinks, Referring domains, Domain rating, Site audit, Page audit, Keyword gap, Backlink gap, AI visibility, AI citations, Visibility history | Semrush, Serpstat, DataForSEO, Ahrefs, Serper |
+| **Web Research** | Search the web, News, Places, Academic papers, Shopping, Images, Videos, Answer from the web, Read a web page, Similar pages | Serper, SerpApi, Exa, DataForSEO, Firecrawl |
 | **Social** | Search, Profile, Recent posts, One post, Find social profiles — on Reddit, X, YouTube, TikTok, Instagram or LinkedIn (the **Platform** field) | ScrapeCreators, Apify, TikHub, People Data Labs |
 | **Market Data** | Property value estimate, Rent estimate, Property records, Listings for sale, Rental listings, ZIP market statistics, Stock quote | RentCast, SerpApi |
 
-Each operation shows only the inputs it requires. Where the API accepts one of several identifiers, a selector picks it: **Lookup By** (LinkedIn URL, Email, or Name and Company) for Enrich a person, **Search By** (Address, City and State, or ZIP Code) for Property Records and listings. Optional inputs are under **Filters** (Search people), **Additional Fields** (`Country`) and **Options**.
+Each operation shows only the inputs it requires. Where the API accepts one of several identifiers, a selector picks it: **Lookup By** (LinkedIn URL, Email, or Name and Company) for Enrich a person, **Search By** (Address, City and State, or ZIP Code) for Property Records and listings. Optional inputs are under **Filters** (Search people), **Additional Fields** (`Country`, `Limit`, and per operation: `Language` and `Time Range` for web search, `Formats`, `Timeout`, `Max Charge` and `Cache Max Age` for Read a web page) and **Options**.
 
 **Options → Provider** exists on every resource. `Auto` (the default) lets Glasser pick the source for the operation and fall back to the next one on a provider error; naming a provider forces it.
 

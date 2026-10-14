@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.2
+
+- SEO gains the seven operations the API added: Site audit, Page audit, Keyword gap, Backlink gap, AI visibility, AI citations and Visibility history. Keyword gap and Backlink gap take `Competitors` (one to four domains, comma-separated); Page audit takes a `URL`.
+- Web Research exposes the inputs the API added for Read a web page (`Formats`, `Timeout`, `Max Charge`, `Cache Max Age`) and for Search the web (`Time Range`), plus `Language`, under Additional Fields.
+- `Limit` is available under Additional Fields on every operation that returns a list. The API caps it per route, so a value above the route's cap is clamped, not refused.
+- Operation descriptions that the API states as a bullet list now read as one paragraph in the form.
+- Existing parameter paths are unchanged; a 0.2.x workflow keeps working.
+
 ## 0.2.1
 
 - Poll a Solution call through its `result_url`. Glasser now returns a normalized Solution response for every resource except Person (fixed `output` fields whichever provider served the call, `result_status`, the chain-total `charge_usd`, `runs`). An in-flight call used to be polled at `GET /v1/runs/{id}`, which returns the native run, so a workflow saw one shape when the call finished within the request and another when it had to wait. The node now follows the `result_url` the response carries, on the API origin only and after checking its path, and keeps `GET /v1/runs/{id}` for a response without one.

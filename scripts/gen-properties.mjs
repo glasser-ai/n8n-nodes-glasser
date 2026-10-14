@@ -79,12 +79,17 @@ const RESOURCES = {
 		name: 'SEO',
 		operation: 'action',
 		groups: [
-			{ operations: ['keyword_overview', 'keyword_ideas', 'serp'], required: ['keywords'], additional: ['country'] },
+			{ operations: ['keyword_overview', 'keyword_ideas', 'serp'], required: ['keywords'], additional: ['country', 'limit'] },
 			{
-				operations: ['domain_overview', 'ranked_keywords', 'organic_competitors', 'backlinks_overview', 'backlinks', 'referring_domains', 'domain_rating'],
+				operations: [
+					'domain_overview', 'ranked_keywords', 'organic_competitors', 'backlinks_overview', 'backlinks', 'referring_domains',
+					'domain_rating', 'site_audit', 'ai_visibility', 'ai_citations', 'visibility_history',
+				],
 				required: ['domain'],
-				additional: ['country'],
+				additional: ['country', 'limit'],
 			},
+			{ operations: ['keyword_gap', 'backlink_gap'], required: ['domain', 'competitors'], additional: ['country', 'limit'] },
+			{ operations: ['page_audit'], required: ['url'] },
 		],
 		options: ['provider'],
 	},
@@ -92,8 +97,10 @@ const RESOURCES = {
 		name: 'Web Research',
 		operation: 'action',
 		groups: [
-			{ operations: ['search', 'news', 'places', 'scholar', 'shopping', 'images', 'videos', 'answer'], required: ['query'], additional: ['country'] },
-			{ operations: ['scrape', 'similar'], required: ['url'] },
+			{ operations: ['search'], required: ['query'], additional: ['country', 'language', 'limit', 'time_range'] },
+			{ operations: ['news', 'places', 'scholar', 'shopping', 'images', 'videos', 'answer'], required: ['query'], additional: ['country', 'language', 'limit'] },
+			{ operations: ['scrape'], required: ['url'], additional: ['formats', 'timeout_ms', 'max_charge_usd', 'cache_max_age_seconds'] },
+			{ operations: ['similar'], required: ['url'], additional: ['limit'] },
 		],
 		options: ['provider'],
 	},
@@ -153,6 +160,14 @@ const FIELDS = {
 	domain: 'Domain',
 	keywords: 'Keywords',
 	country: 'Country',
+	language: 'Language',
+	limit: 'Limit',
+	competitors: 'Competitors',
+	time_range: 'Time Range',
+	formats: 'Formats',
+	timeout_ms: 'Timeout (Ms)',
+	max_charge_usd: 'Max Charge (USD)',
+	cache_max_age_seconds: 'Cache Max Age (Seconds)',
 	job_titles: 'Job Titles',
 	seniorities: 'Seniorities',
 	locations: 'Locations',
@@ -166,6 +181,13 @@ const FIELDS = {
 	state: 'State',
 	zip: 'ZIP Code',
 	symbol: 'Symbol',
+};
+
+// Placeholders for free-text fields where an example reads faster than the description.
+const PLACEHOLDERS = {
+	email: { placeholder: 'name@email.com' },
+	max_charge_usd: { placeholder: '0.50' },
+	competitors: { placeholder: 'shopify.com, squarespace.com' },
 };
 
 // Fallback descriptions for fields whose schema carries none.
@@ -197,12 +219,15 @@ const OPTIONS = {
 	apollo: 'Apollo', pdl: 'People Data Labs', hunter: 'Hunter', prospeo: 'Prospeo', leadmagic: 'LeadMagic',
 	zoominfo: 'ZoomInfo', predictleads: 'PredictLeads', builtwith: 'BuiltWith', dataforseo: 'DataForSEO',
 	ahrefs: 'Ahrefs', semrush: 'Semrush', serpstat: 'Serpstat', serper: 'Serper', serpapi: 'SerpApi',
+	html: 'HTML', raw_html: 'Raw HTML',
 	exa: 'Exa', apify: 'Apify', scrapecreators: 'ScrapeCreators', tikhub: 'TikHub', rentcast: 'RentCast',
 	// operations
 	search: 'Search', enrich: 'Enrich', find_email: 'Find Work Email',
 	tech_stack: 'Technology Stack', traffic: 'Website Traffic', competitors: 'Competitors', funding: 'Funding Rounds', news: 'News',
 	keyword_overview: 'Keyword Metrics', keyword_ideas: 'Keyword Ideas', serp: 'Google Results for a Keyword',
 	domain_overview: 'Domain Organic Overview', ranked_keywords: 'Ranked Keywords', organic_competitors: 'Organic Search Competitors',
+	site_audit: 'Site Audit', page_audit: 'Page Audit', keyword_gap: 'Keyword Gap', backlink_gap: 'Backlink Gap',
+	ai_visibility: 'AI Visibility', ai_citations: 'AI Citations', visibility_history: 'Visibility History',
 	backlinks_overview: 'Backlink Totals', backlinks: 'Backlinks List', referring_domains: 'Referring Domains', domain_rating: 'Domain Rating',
 	places: 'Places', scholar: 'Academic Papers', shopping: 'Shopping', images: 'Images', videos: 'Videos',
 	answer: 'Answer From the Web', scrape: 'Read a Web Page', similar: 'Similar Pages',
@@ -235,6 +260,13 @@ const ACTIONS = {
 	'seo_research.backlinks': 'List backlinks',
 	'seo_research.referring_domains': 'List referring domains',
 	'seo_research.domain_rating': 'Get domain rating',
+	'seo_research.site_audit': 'Audit a site',
+	'seo_research.page_audit': 'Audit a page',
+	'seo_research.keyword_gap': 'Get the keyword gap',
+	'seo_research.backlink_gap': 'Get the backlink gap',
+	'seo_research.ai_visibility': 'Get AI visibility',
+	'seo_research.ai_citations': 'List AI citations',
+	'seo_research.visibility_history': 'Get visibility history',
 	'web_research.search': 'Search the web',
 	'web_research.news': 'Search news',
 	'web_research.places': 'Search places',
@@ -300,7 +332,9 @@ function label(value) {
  * sentences keep theirs; first character uppercase; "URL" spelled as such.
  */
 function describe(text) {
-	let t = text.trim().replace(/\burl\b/g, 'URL').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+	// A bullet list in the contract becomes one paragraph: n8n shows a description on a single line.
+	let t = text.trim().replace(/\n+\s*-\s*/g, ' ').replace(/\s+/g, ' ');
+	t = t.replace(/\burl\b/g, 'URL').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 	t = t[0].toUpperCase() + t.slice(1);
 	// "e.g." and "i.e." are not sentence ends.
 	const sentences = t.replace(/\b(e\.g\.|i\.e\.)/g, 'xx').split(/(?<=[.!?])\s+/).length;
@@ -336,7 +370,7 @@ function buildField(resource, name, prop) {
 	const schema = unwrap(prop);
 	const displayName = FIELDS[name];
 	if (!displayName) throw new Error(`${resource}.${name}: no display name in FIELDS; add one`);
-	const raw = schema.description ?? FIELD_DESCRIPTIONS[`${resource}.${name}`] ?? FIELD_DESCRIPTIONS[name];
+	const raw = schema.allOf?.find((s) => s.description)?.description ?? schema.description ?? FIELD_DESCRIPTIONS[`${resource}.${name}`] ?? FIELD_DESCRIPTIONS[name];
 	const description = raw === undefined ? undefined : describe(raw);
 	const dropdownDescription = raw === undefined ? undefined : describe(withoutEnumList(raw));
 	const base = { displayName, name, description };
@@ -363,17 +397,22 @@ function buildField(resource, name, prop) {
 			};
 		}
 		const n = schema.maxItems ?? 20;
-		return { ...base, type: 'string', default: '', description: describe(`${raw ?? displayName}. Comma-separated, up to ${n}.`) };
+		return { ...base, type: 'string', default: '', description: describe(`${(raw ?? displayName).replace(/\.$/, '')}. Comma-separated, up to ${n}.`), ...PLACEHOLDERS[name] };
+	}
+	if (name === 'limit') {
+		// n8n's own wording and default for a Limit field (lint rules node-param-*-for-limit). The API clamps it per route.
+		return { ...base, description: 'Max number of results to return', type: 'number', default: 50, typeOptions: { minValue: 1, maxValue: schema.maximum } };
 	}
 	if (schema.type === 'integer') {
+		const stated = /\bDefault (\d+)\./.exec(raw ?? '');
 		return {
 			...base,
 			type: 'number',
-			default: schema.minimum ?? 1,
+			default: stated ? Number(stated[1]) : (schema.minimum ?? 1),
 			typeOptions: { minValue: schema.minimum, maxValue: schema.maximum },
 		};
 	}
-	return { ...base, type: 'string', default: '', ...(name === 'email' ? { placeholder: 'name@email.com' } : {}) };
+	return { ...base, type: 'string', default: '', ...PLACEHOLDERS[name] };
 }
 
 /** The Operation dropdown: the contract's action (or mode) enum, with the verb an AI Agent reads. */
